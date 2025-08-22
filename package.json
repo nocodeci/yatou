@@ -39,7 +39,6 @@
     "react-dom": "19.0.0",
     "react-native": "^0.79.1",
     "react-native-dotenv": "^3.4.11",
-    "react-native-gesture-handler": "~2.14.0",
     "react-native-mapbox-gl": "^5.2.1-deprecated",
     "react-native-maps": "1.20.1",
     "react-native-modalize": "^2.0.8",

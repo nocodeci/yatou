@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
@@ -42,9 +41,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <RootLayoutNav />
-      </GestureHandlerRootView>
+      <RootLayoutNav />
     </QueryClientProvider>
   );
 }
