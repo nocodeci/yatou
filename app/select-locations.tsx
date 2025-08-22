@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from "react-native"
+import { useState, useEffect } from "react"
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { MapPin } from "lucide-react-native"
@@ -12,6 +12,15 @@ interface LocationItem {
   address: string
   icon: string
   type: "current" | "gps" | "location" | "home" | "work"
+}
+
+interface SearchResult {
+  place_id: string
+  description: string
+  structured_formatting: {
+    main_text: string
+    secondary_text: string
+  }
 }
 
 const predefinedLocations: LocationItem[] = [
@@ -114,35 +123,154 @@ export default function SelectLocationsScreen() {
   const [destinationLocation, setDestinationLocation] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [activeField, setActiveField] = useState<"departure" | "destination" | null>(null)
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [departureCoords, setDepartureCoords] = useState<string>("")
+  const [destinationCoords, setDestinationCoords] = useState<string>("")
 
-  const filteredLocations = predefinedLocations.filter(
-    (location) =>
-      location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      location.address.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  // URL du backend
+  const BACKEND_URL = "http://192.168.100.191:3000"
 
-  const handleLocationSelect = (location: LocationItem) => {
+  // Fonction pour rechercher des lieux via l'API Google Places
+  const searchPlaces = async (query: string) => {
+    if (query.length < 2) {
+      setSearchResults([])
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/api/places/autocomplete?input=${encodeURIComponent(query)}`
+      )
+      const data = await response.json()
+
+      if (data.status === "OK" && data.predictions) {
+        setSearchResults(data.predictions)
+      } else {
+        console.error("Erreur recherche lieux:", data.error_message)
+        setSearchResults([])
+      }
+    } catch (error) {
+      console.error("Erreur lors de la recherche:", error)
+      setSearchResults([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fonction pour obtenir les détails d'un lieu
+  const getPlaceDetails = async (placeId: string): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/api/places/details?place_id=${encodeURIComponent(placeId)}`
+      )
+      const data = await response.json()
+
+      if (data.status === "OK" && data.result && data.result.geometry) {
+        const { lat, lng } = data.result.geometry.location
+        return { lat, lng }
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des détails:", error)
+    }
+    return null
+  }
+
+  // Fonction pour calculer l'itinéraire
+  const calculateRoute = async (origin: string, destination: string) => {
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/api/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
+      )
+      const data = await response.json()
+
+      if (data.status === "OK" && data.routes && data.routes.length > 0) {
+        return data.routes[0]
+      }
+    } catch (error) {
+      console.error("Erreur lors du calcul d'itinéraire:", error)
+    }
+    return null
+  }
+
+  // Effet pour la recherche en temps réel
+  useEffect(() => {
+    if (searchQuery.length >= 2) {
+      const timeoutId = setTimeout(() => {
+        searchPlaces(searchQuery)
+      }, 300) // Délai de 300ms pour éviter trop de requêtes
+
+      return () => clearTimeout(timeoutId)
+    } else {
+      setSearchResults([])
+    }
+  }, [searchQuery])
+
+  const handleLocationSelect = async (location: LocationItem) => {
     if (activeField === "departure") {
       setDepartureLocation(location.name)
+      // Coordonnées par défaut pour les lieux prédéfinis
+      setDepartureCoords("-5.0301,7.6901")
     } else if (activeField === "destination") {
       setDestinationLocation(location.name)
+      setDestinationCoords("-5.0289,7.6895")
     }
     setSearchQuery("")
     setActiveField(null)
   }
 
-  const handleConfirmTrip = () => {
-    if (departureLocation && destinationLocation) {
-      // Navigation vers la page d'accueil avec les paramètres
-      router.push({
-        pathname: "/(tabs)",
-        params: {
-          originName: departureLocation,
-          destinationName: destinationLocation,
-          originCoords: "-5.0301,7.6901", // Coordonnées par défaut
-          destinationCoords: "-5.0289,7.6895", // Coordonnées par défaut
-        },
-      })
+  const handleSearchResultSelect = async (result: SearchResult) => {
+    const placeName = result.structured_formatting.main_text
+    const placeAddress = result.structured_formatting.secondary_text
+
+    // Obtenir les coordonnées du lieu
+    const coords = await getPlaceDetails(result.place_id)
+    const coordsString = coords ? `${coords.lng},${coords.lat}` : ""
+
+    if (activeField === "departure") {
+      setDepartureLocation(placeName)
+      setDepartureCoords(coordsString)
+    } else if (activeField === "destination") {
+      setDestinationLocation(placeName)
+      setDestinationCoords(coordsString)
+    }
+
+    setSearchQuery("")
+    setActiveField(null)
+    setSearchResults([])
+  }
+
+  const handleConfirmTrip = async () => {
+    if (!departureLocation || !destinationLocation) {
+      Alert.alert("Erreur", "Veuillez sélectionner un lieu de départ et une destination")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      // Calculer l'itinéraire
+      const route = await calculateRoute(departureLocation, destinationLocation)
+
+      if (route) {
+        // Navigation vers la page d'accueil avec les paramètres
+        router.push({
+          pathname: "/(tabs)",
+          params: {
+            originName: departureLocation,
+            destinationName: destinationLocation,
+            originCoords: departureCoords || "-5.0301,7.6901",
+            destinationCoords: destinationCoords || "-5.0289,7.6895",
+          },
+        })
+      } else {
+        Alert.alert("Erreur", "Impossible de calculer l'itinéraire. Veuillez réessayer.")
+      }
+    } catch (error) {
+      console.error("Erreur lors de la confirmation:", error)
+      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -162,6 +290,25 @@ export default function SelectLocationsScreen() {
         <View style={styles.locationContent}>
           <Text style={[styles.locationName, isCurrentLocation && styles.currentLocationName]}>{item.name}</Text>
           {item.address && <Text style={styles.locationAddress}>{item.address}</Text>}
+        </View>
+      </TouchableOpacity>
+    )
+  }
+
+  const renderSearchResult = (result: SearchResult) => {
+    return (
+      <TouchableOpacity
+        key={result.place_id}
+        style={styles.searchResultItem}
+        onPress={() => handleSearchResultSelect(result)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.searchResultIcon}>
+          <Text style={styles.searchResultIconText}>📍</Text>
+        </View>
+        <View style={styles.searchResultContent}>
+          <Text style={styles.searchResultName}>{result.structured_formatting.main_text}</Text>
+          <Text style={styles.searchResultAddress}>{result.structured_formatting.secondary_text}</Text>
         </View>
       </TouchableOpacity>
     )
@@ -252,9 +399,19 @@ export default function SelectLocationsScreen() {
       )}
 
       {/* Liste des suggestions */}
-      {activeField && searchQuery && (
+      {activeField && (searchQuery || searchResults.length > 0) && (
         <ScrollView style={styles.locationsList} showsVerticalScrollIndicator={false}>
-          {filteredLocations.map(renderLocationItem)}
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Recherche en cours...</Text>
+            </View>
+          ) : searchQuery ? (
+            // Résultats de recherche Google Places
+            searchResults.map(renderSearchResult)
+          ) : (
+            // Lieux prédéfinis
+            predefinedLocations.map(renderLocationItem)
+          )}
         </ScrollView>
       )}
 
@@ -263,12 +420,14 @@ export default function SelectLocationsScreen() {
         <TouchableOpacity
           style={[
             styles.confirmButton,
-            (!departureLocation || !destinationLocation) && styles.confirmButtonDisabled,
+            (!departureLocation || !destinationLocation || isLoading) && styles.confirmButtonDisabled,
           ]}
           onPress={handleConfirmTrip}
-          disabled={!departureLocation || !destinationLocation}
+          disabled={!departureLocation || !destinationLocation || isLoading}
         >
-          <Text style={styles.confirmButtonText}>Confirmer le trajet</Text>
+          <Text style={styles.confirmButtonText}>
+            {isLoading ? "Calcul en cours..." : "Confirmer le trajet"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -453,6 +612,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#9CA3AF",
     lineHeight: 18,
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  searchResultIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  searchResultIconText: {
+    fontSize: 16,
+  },
+  searchResultContent: {
+    flex: 1,
+  },
+  searchResultName: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#111827",
+    marginBottom: 2,
+  },
+  searchResultAddress: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    lineHeight: 18,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#6B7280",
   },
   confirmSection: {
     paddingHorizontal: 20,
