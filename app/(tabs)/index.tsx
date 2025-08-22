@@ -11,7 +11,6 @@ import {
   Dimensions,
   Animated,
   TextInput,
-  Modal,
 } from "react-native"
 import { Plus, MapPin, Clock, Star } from "lucide-react-native"
 import { useRouter } from "expo-router"
@@ -19,6 +18,7 @@ import { useRouter } from "expo-router"
 import { AppColors } from "@/app/constants/colors"
 import YatouLogo from "@/components/YatouLogo"
 import GoogleMapViewComponent from "@/components/MapView"
+import BottomSheet from "@/components/BottomSheet"
 
 export default function ImprovedHomeScreen() {
   const router = useRouter()
@@ -43,12 +43,10 @@ export default function ImprovedHomeScreen() {
 
   const [pickupLocation, setPickupLocation] = useState("")
   const [destinationLocation, setDestinationLocation] = useState("")
-  const [showModal, setShowModal] = useState(false)
+  const [showBottomSheet, setShowBottomSheet] = useState(false)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(50)).current
-  const modalSlideAnim = useRef(new Animated.Value(300)).current
-  const modalScaleAnim = useRef(new Animated.Value(0.8)).current
 
   const mapRef = useRef<any>(null)
 
@@ -85,44 +83,17 @@ export default function ImprovedHomeScreen() {
   }, [params])
 
   const handleSearchBarPress = () => {
-    setShowModal(true)
-    // Animation d'ouverture avec effet de profondeur
-    Animated.parallel([
-      Animated.timing(modalSlideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(modalScaleAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start()
+    setShowBottomSheet(true)
   }
 
-  const handleModalClose = () => {
-    // Animation de fermeture
-    Animated.parallel([
-      Animated.timing(modalSlideAnim, {
-        toValue: 300,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(modalScaleAnim, {
-        toValue: 0.8,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setShowModal(false)
-    })
+  const handleBottomSheetClose = () => {
+    setShowBottomSheet(false)
   }
 
   const handleConfirmTrip = () => {
     if (pickupLocation && destinationLocation) {
       console.log("Trip confirmed:", { pickup: pickupLocation, destination: destinationLocation })
-      setShowModal(false)
+      handleBottomSheetClose()
       // Here you can add navigation to booking screen or other logic
     }
   }
@@ -419,89 +390,15 @@ export default function ImprovedHomeScreen() {
         )}
       </View>
 
-      <Modal
-        visible={showModal}
-        transparent={true}
-        animationType="none"
-        onRequestClose={handleModalClose}
-      >
-        <View style={styles.modalOverlay}>
-          <Animated.View
-            style={[
-              styles.modalContainer,
-              {
-                transform: [{ translateY: modalSlideAnim }],
-                opacity: modalScaleAnim,
-              },
-            ]}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Planifier votre trajet</Text>
-              <TouchableOpacity onPress={handleModalClose} style={styles.closeButton}>
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalContent}>
-              <View style={styles.inputContainer}>
-                <View style={styles.inputWrapper}>
-                  <View style={styles.inputIcon}>
-                    <View style={styles.pickupDot} />
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Lieu de prise en charge"
-                    placeholderTextColor="#9CA3AF"
-                    value={pickupLocation}
-                    onChangeText={setPickupLocation}
-                  />
-                </View>
-
-                <View style={styles.modalRouteLine} />
-
-                <View style={styles.inputWrapper}>
-                  <View style={styles.inputIcon}>
-                    <MapPin size={16} color="#EF4444" />
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Destination"
-                    placeholderTextColor="#9CA3AF"
-                    value={destinationLocation}
-                    onChangeText={setDestinationLocation}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.quickActions}>
-                <TouchableOpacity style={styles.quickActionButton}>
-                  <Text style={styles.quickActionIcon}>🏠</Text>
-                  <Text style={styles.quickActionText}>Domicile</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickActionButton}>
-                  <Text style={styles.quickActionIcon}>💼</Text>
-                  <Text style={styles.quickActionText}>Bureau</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickActionButton}>
-                  <Text style={styles.quickActionIcon}>📍</Text>
-                  <Text style={styles.quickActionText}>Récents</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.confirmButton,
-                  (!pickupLocation || !destinationLocation) && styles.confirmButtonDisabled,
-                ]}
-                onPress={handleConfirmTrip}
-                disabled={!pickupLocation || !destinationLocation}
-              >
-                <Text style={styles.confirmButtonText}>Confirmer le trajet</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
+      <BottomSheet
+        visible={showBottomSheet}
+        onClose={handleBottomSheetClose}
+        pickupLocation={pickupLocation}
+        destinationLocation={destinationLocation}
+        onPickupChange={setPickupLocation}
+        onDestinationChange={setDestinationLocation}
+        onConfirm={handleConfirmTrip}
+      />
 
       <Animated.View
         style={[
@@ -1145,12 +1042,24 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
 
-  modalOverlay: {
-    flex: 1,
+  // Bottom Sheet Styles
+  bottomSheetOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
+    zIndex: 2000,
   },
-  modalContainer: {
+  overlayTouchable: {
+    flex: 1,
+  },
+  bottomSheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -1158,14 +1067,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
     maxHeight: "80%",
+    zIndex: 2001,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
   },
-  modalHeader: {
+  bottomSheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  bottomSheetHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 24,
   },
-  modalTitle: {
+  bottomSheetTitle: {
     fontSize: 20,
     fontWeight: "600",
     color: "#1F2937",
@@ -1182,7 +1105,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#6B7280",
   },
-  modalContent: {
+  bottomSheetContent: {
     flex: 1,
   },
   inputContainer: {
