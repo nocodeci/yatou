@@ -22,6 +22,14 @@ function RootLayoutNav() {
           }} 
         />
         <Stack.Screen 
+          name="select-locations" 
+          options={{ 
+            presentation: "modal",
+            headerShown: true,
+            title: "Sélection des lieux"
+          }} 
+        />
+        <Stack.Screen 
           name="delivery/[id]" 
           options={{ 
             headerShown: true,
