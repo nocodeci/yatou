@@ -18,7 +18,6 @@ import { useRouter } from "expo-router"
 import { AppColors } from "@/app/constants/colors"
 import YatouLogo from "@/components/YatouLogo"
 import GoogleMapViewComponent from "@/components/MapView"
-import BottomSheet from "@/components/BottomSheet"
 
 export default function ImprovedHomeScreen() {
   const router = useRouter()
@@ -41,9 +40,7 @@ export default function ImprovedHomeScreen() {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [selectedServiceType, setSelectedServiceType] = useState<"standard" | "premium">("standard")
 
-  const [pickupLocation, setPickupLocation] = useState("")
-  const [destinationLocation, setDestinationLocation] = useState("")
-  const [showBottomSheet, setShowBottomSheet] = useState(false)
+
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(50)).current
@@ -83,20 +80,10 @@ export default function ImprovedHomeScreen() {
   }, [params])
 
   const handleSearchBarPress = () => {
-    setShowBottomSheet(true)
+    router.push("/new-delivery")
   }
 
-  const handleBottomSheetClose = () => {
-    setShowBottomSheet(false)
-  }
 
-  const handleConfirmTrip = () => {
-    if (pickupLocation && destinationLocation) {
-      console.log("Trip confirmed:", { pickup: pickupLocation, destination: destinationLocation })
-      handleBottomSheetClose()
-      // Here you can add navigation to booking screen or other logic
-    }
-  }
 
   // Fonction pour rechercher des adresses réelles avec Google Places API
   const performSearch = async (query: string) => {
@@ -390,15 +377,7 @@ export default function ImprovedHomeScreen() {
         )}
       </View>
 
-      <BottomSheet
-        visible={showBottomSheet}
-        onClose={handleBottomSheetClose}
-        pickupLocation={pickupLocation}
-        destinationLocation={destinationLocation}
-        onPickupChange={setPickupLocation}
-        onDestinationChange={setDestinationLocation}
-        onConfirm={handleConfirmTrip}
-      />
+
 
       <Animated.View
         style={[
