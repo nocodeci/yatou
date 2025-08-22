@@ -275,37 +275,37 @@ export default function ImprovedHomeScreen() {
         />
 
         <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
-          <View style={styles.topBarContent}>
-            <View style={styles.topBarLeft}>
-              <YatouLogo size="large" showText={false} variant="01" style={styles.topBarLogo} />
+        <View style={styles.topBarContent}>
+          <View style={styles.topBarLeft}>
+            <YatouLogo size="large" showText={false} variant="01" style={styles.topBarLogo} />
               <View style={styles.locationIndicator}>
                 <MapPin size={16} color="#10B981" />
                 <Text style={styles.locationText}>Bouaké</Text>
                 <View style={styles.onlineIndicator} />
               </View>
-            </View>
+          </View>
 
-            <View style={styles.topBarRight}>
+          <View style={styles.topBarRight}>
               <TouchableOpacity style={styles.notificationButton} activeOpacity={0.7}>
                 <Text style={styles.notificationIcon}>🔔</Text>
                 <View style={styles.notificationBadge}>
                   <Text style={styles.notificationBadgeText}>2</Text>
-                </View>
-              </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.menuContainer}
-                onPress={() => router.push("/(tabs)/profile")}
-                activeOpacity={0.7}
-              >
-                <View style={styles.menuIcon}>
-                  <View style={styles.menuLine} />
-                  <View style={styles.menuLine} />
-                  <View style={styles.menuLine} />
-                </View>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.menuContainer}
+              onPress={() => router.push("/(tabs)/profile")}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuIcon}>
+                <View style={styles.menuLine} />
+                <View style={styles.menuLine} />
+                <View style={styles.menuLine} />
+              </View>
+            </TouchableOpacity>
           </View>
+        </View>
         </Animated.View>
 
         <Animated.View
@@ -396,7 +396,7 @@ export default function ImprovedHomeScreen() {
                 <View style={styles.distanceChip}>
                   <Text style={styles.distanceText}>{calculatePricing.distance} km</Text>
                   <Clock size={12} color="#6B7280" />
-                </View>
+        </View>
               </View>
 
               <View style={styles.tripRoute}>
@@ -406,7 +406,7 @@ export default function ImprovedHomeScreen() {
                     <Text style={styles.routeLabel}>Départ</Text>
                     <Text style={styles.routeText}>{selectedOriginName || "Ma position"}</Text>
                   </View>
-                </View>
+        </View>
 
                 <View style={styles.routeLine} />
 
@@ -424,7 +424,7 @@ export default function ImprovedHomeScreen() {
               <Text style={styles.serviceTitle}>Choisir votre service</Text>
               <View style={styles.serviceOptions}>
                 {pricingOptions.map((option) => (
-                  <TouchableOpacity
+            <TouchableOpacity
                     key={option.id}
                     style={[styles.serviceOption, selectedServiceType === option.id && styles.serviceOptionSelected]}
                     onPress={() => setSelectedServiceType(option.id as "standard" | "premium")}
@@ -471,8 +471,8 @@ export default function ImprovedHomeScreen() {
                     {pricingOptions.find((opt) => opt.id === selectedServiceType)?.price.toLocaleString()} ₣
                   </Text>
                 </View>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
+          </View>
           </>
         ) : (
           <View style={styles.quickStats}>
@@ -496,7 +496,7 @@ export default function ImprovedHomeScreen() {
                 </View>
                 <Text style={styles.statNumber}>4.8★</Text>
                 <Text style={styles.statLabel}>Note moyenne</Text>
-              </View>
+        </View>
 
               <View style={styles.statDivider} />
 
@@ -508,10 +508,10 @@ export default function ImprovedHomeScreen() {
                 <Text style={styles.statLabel}>Chauffeurs actifs</Text>
               </View>
             </View>
-          </View>
-        )}
+            </View>
+          )}
       </Animated.View>
-    </View>
+        </View>
   )
 }
 

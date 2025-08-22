@@ -1,330 +1,485 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useRouter } from 'expo-router';
-import { AppColors } from '@/app/constants/colors';
+"use client"
 
-interface Location {
-  id: string;
-  name: string;
-  address: string;
-  icon: string;
-  type: 'current' | 'destination' | 'saved' | 'recent';
+import { useState } from "react"
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { useRouter } from "expo-router"
+import { MapPin } from "lucide-react-native"
+
+interface LocationItem {
+  id: string
+  name: string
+  address: string
+  icon: string
+  type: "current" | "gps" | "location" | "home" | "work"
 }
 
+const predefinedLocations: LocationItem[] = [
+  {
+    id: "current",
+    name: "Emplacement actuel",
+    address: "",
+    icon: "🏃‍♂️",
+    type: "current",
+  },
+  {
+    id: "gps",
+    name: "Votre position",
+    address: "Prise en charge à votre position GPS",
+    icon: "📍",
+    type: "gps",
+  },
+  {
+    id: "ngattakro",
+    name: "N'gattakro",
+    address: "Bouaké, Gbeke, Vallée du Bandama",
+    icon: "📍",
+    type: "location",
+  },
+  {
+    id: "bouake1",
+    name: "Bouaké",
+    address: "Gbeke, Vallée du Bandama",
+    icon: "📍",
+    type: "location",
+  },
+  {
+    id: "avenue-alassane",
+    name: "Avenue Alassane Ouattara",
+    address: "Bouaké, Gbeke, Vallée du Bandama",
+    icon: "📍",
+    type: "location",
+  },
+  {
+    id: "maison1",
+    name: "Maison",
+    address: "Bouaké",
+    icon: "🏠",
+    type: "home",
+  },
+  {
+    id: "super-marche",
+    name: "Super marché galaxy",
+    address: "Avenue Mamadou Konaté",
+    icon: "🏠",
+    type: "home",
+  },
+  {
+    id: "maison-flora",
+    name: "Maison Flora",
+    address: "Ahougnansou 1",
+    icon: "🏠",
+    type: "home",
+  },
+  {
+    id: "maison-abidjan",
+    name: "Maison Abidjan",
+    address: "Quartier de la Djorobité II",
+    icon: "🏠",
+    type: "home",
+  },
+  {
+    id: "travail",
+    name: "Travail",
+    address: "232, Rue L259",
+    icon: "💼",
+    type: "work",
+  },
+  {
+    id: "bouake2",
+    name: "Bouaké",
+    address: "Gbeke, Vallée du Bandama",
+    icon: "📍",
+    type: "location",
+  },
+  {
+    id: "bouake3",
+    name: "Bouaké",
+    address: "Gbeke, Vallée du Bandama",
+    icon: "📍",
+    type: "location",
+  },
+  {
+    id: "ngattakro2",
+    name: "N'gattakro",
+    address: "Bouaké, Gbeke, Vallée du Bandama",
+    icon: "📍",
+    type: "location",
+  },
+]
+
 export default function SelectLocationsScreen() {
-  const router = useRouter();
-  const [destinationQuery, setDestinationQuery] = useState('');
+  const router = useRouter()
+  const [departureLocation, setDepartureLocation] = useState("")
+  const [destinationLocation, setDestinationLocation] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [activeField, setActiveField] = useState<"departure" | "destination" | null>(null)
 
-  // Données des lieux selon l'image
-  const locations: Location[] = [
-    {
-      id: '1',
-      name: 'Votre position',
-      address: 'Prise en charge à votre position GPS',
-      icon: '📱',
-      type: 'current'
-    },
-    {
-      id: '2',
-      name: "N'gattakro",
-      address: 'Bouaké, Gbeke, Vallée du Bandama',
-      icon: '📍',
-      type: 'recent'
-    },
-    {
-      id: '3',
-      name: 'Bouaké',
-      address: 'Gbeke, Vallée du Bandama',
-      icon: '📍',
-      type: 'recent'
-    },
-    {
-      id: '4',
-      name: 'Avenue Alassane Ouattara',
-      address: 'Bouaké, Gbeke, Vallée du Bandama',
-      icon: '📍',
-      type: 'recent'
-    },
-    {
-      id: '5',
-      name: 'Maison',
-      address: 'Bouaké',
-      icon: '🏠',
-      type: 'saved'
-    },
-    {
-      id: '6',
-      name: 'Super marché galaxy',
-      address: 'Avenue Mamadou Konaté',
-      icon: '🛒',
-      type: 'saved'
-    },
-    {
-      id: '7',
-      name: 'Maison Flora',
-      address: 'Ahougnansou 1',
-      icon: '🏠',
-      type: 'saved'
-    },
-    {
-      id: '8',
-      name: 'Maison Abidjan',
-      address: 'Quartier de la Djorobité II',
-      icon: '🏠',
-      type: 'saved'
-    },
-    {
-      id: '9',
-      name: 'Travail',
-      address: '232, Rue L259',
-      icon: '💼',
-      type: 'saved'
-    },
-    {
-      id: '10',
-      name: 'Bouaké',
-      address: 'Gbeke, Vallée du Bandama',
-      icon: '📍',
-      type: 'recent'
-    },
-    {
-      id: '11',
-      name: 'Bouaké',
-      address: 'Gbeke, Vallée du Bandama',
-      icon: '📍',
-      type: 'recent'
-    },
-    {
-      id: '12',
-      name: "N'gattakro",
-      address: 'Bouaké, Gbeke, Vallée du Bandama',
-      icon: '📍',
-      type: 'recent'
+  const filteredLocations = predefinedLocations.filter(
+    (location) =>
+      location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      location.address.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
+
+  const handleLocationSelect = (location: LocationItem) => {
+    if (activeField === "departure") {
+      setDepartureLocation(location.name)
+    } else if (activeField === "destination") {
+      setDestinationLocation(location.name)
     }
-  ];
+    setSearchQuery("")
+    setActiveField(null)
+  }
 
-  const handleLocationSelect = (location: Location) => {
-    // Navigation vers la page d'accueil avec les données sélectionnées
-    router.push({
-      pathname: '/(tabs)',
-      params: {
-        destinationName: location.name,
-        destinationAddress: location.address,
-        destinationId: location.id
-      }
-    });
-  };
+  const handleConfirmTrip = () => {
+    if (departureLocation && destinationLocation) {
+      // Navigation vers la page d'accueil avec les paramètres
+      router.push({
+        pathname: "/(tabs)",
+        params: {
+          originName: departureLocation,
+          destinationName: destinationLocation,
+          originCoords: "-5.0301,7.6901", // Coordonnées par défaut
+          destinationCoords: "-5.0289,7.6895", // Coordonnées par défaut
+        },
+      })
+    }
+  }
+
+  const renderLocationItem = (item: LocationItem) => {
+    const isCurrentLocation = item.type === "current"
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        style={[styles.locationItem, isCurrentLocation && styles.currentLocationItem]}
+        onPress={() => handleLocationSelect(item)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconContainer, isCurrentLocation && styles.currentLocationIcon]}>
+          <Text style={styles.locationIcon}>{item.icon}</Text>
+        </View>
+        <View style={styles.locationContent}>
+          <Text style={[styles.locationName, isCurrentLocation && styles.currentLocationName]}>{item.name}</Text>
+          {item.address && <Text style={styles.locationAddress}>{item.address}</Text>}
+        </View>
+      </TouchableOpacity>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen 
-        options={{
-          title: "Sélection des lieux",
-          headerStyle: {
-            backgroundColor: '#FFFFFF',
-          },
-          headerTintColor: '#1F2937',
-          headerTitleStyle: {
-            fontWeight: '600',
-          },
-        }}
-      />
-      
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        {/* Handle pour fermer la modale */}
-        <View style={styles.handle} />
-        
-        {/* Section Emplacement actuel */}
-        <View style={styles.currentLocationSection}>
-          <Text style={styles.sectionTitle}>Emplacement actuel</Text>
-          <View style={styles.currentLocationCard}>
-            <View style={styles.currentLocationIcon}>
-              <Text style={styles.currentLocationIconText}>🚶</Text>
-            </View>
-            <View style={styles.currentLocationInfo}>
-              <Text style={styles.currentLocationName}>Votre position</Text>
-              <Text style={styles.currentLocationAddress}>Prise en charge à votre position GPS</Text>
-            </View>
+      <View style={styles.header}>
+        <View style={styles.statusBar} />
+        <Text style={styles.headerTitle}>Planifier votre trajet</Text>
+      </View>
+
+      <View style={styles.inputContainer}>
+        {/* Lieu de départ */}
+        <View style={styles.inputWrapper}>
+          <View style={styles.inputIcon}>
+            <View style={styles.departureDot} />
           </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Lieu de départ"
+            placeholderTextColor="#9CA3AF"
+            value={departureLocation}
+            onChangeText={setDepartureLocation}
+            onFocus={() => setActiveField("departure")}
+            onBlur={() => setActiveField(null)}
+          />
         </View>
 
-        {/* Champ de recherche destination */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchInputContainer}>
-            <View style={styles.searchIcon}>
-              <Text style={styles.searchIconText}>🏁</Text>
-            </View>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Où allez-vous?"
-              placeholderTextColor="#9CA3AF"
-              value={destinationQuery}
-              onChangeText={setDestinationQuery}
-            />
-          </View>
-        </View>
+        <View style={styles.routeLine} />
 
-        {/* Liste des lieux */}
-        <ScrollView 
-          style={styles.locationsList}
-          showsVerticalScrollIndicator={true}
-          indicatorStyle="black"
+        {/* Lieu de destination */}
+        <View style={styles.inputWrapper}>
+          <View style={styles.inputIcon}>
+            <MapPin size={16} color="#EF4444" />
+          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Lieu de destination"
+            placeholderTextColor="#9CA3AF"
+            value={destinationLocation}
+            onChangeText={setDestinationLocation}
+            onFocus={() => setActiveField("destination")}
+            onBlur={() => setActiveField(null)}
+          />
+        </View>
+      </View>
+
+      {/* Actions rapides */}
+      <View style={styles.quickActions}>
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={() => setDepartureLocation("Domicile")}
         >
-          {locations.map((location, index) => (
-            <TouchableOpacity
-              key={location.id}
-              style={styles.locationItem}
-              onPress={() => handleLocationSelect(location)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.locationIcon}>
-                <Text style={styles.locationIconText}>{location.icon}</Text>
-              </View>
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationName}>{location.name}</Text>
-                <Text style={styles.locationAddress}>{location.address}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+          <Text style={styles.quickActionIcon}>🏠</Text>
+          <Text style={styles.quickActionText}>Domicile</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={() => setDepartureLocation("Bureau")}
+        >
+          <Text style={styles.quickActionIcon}>💼</Text>
+          <Text style={styles.quickActionText}>Bureau</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={() => setDepartureLocation("Position actuelle")}
+        >
+          <Text style={styles.quickActionIcon}>📍</Text>
+          <Text style={styles.quickActionText}>Ma position</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Barre de recherche pour les suggestions */}
+      {activeField && (
+        <View style={styles.searchSection}>
+          <View style={styles.searchIconContainer}>
+            <Text style={styles.searchIcon}>🔍</Text>
+          </View>
+          <TextInput
+            style={styles.searchInput}
+            placeholder={`Rechercher ${activeField === "departure" ? "un lieu de départ" : "une destination"}...`}
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+      )}
+
+      {/* Liste des suggestions */}
+      {activeField && searchQuery && (
+        <ScrollView style={styles.locationsList} showsVerticalScrollIndicator={false}>
+          {filteredLocations.map(renderLocationItem)}
         </ScrollView>
-      </KeyboardAvoidingView>
+      )}
+
+      {/* Bouton de confirmation */}
+      <View style={styles.confirmSection}>
+        <TouchableOpacity
+          style={[
+            styles.confirmButton,
+            (!departureLocation || !destinationLocation) && styles.confirmButtonDisabled,
+          ]}
+          onPress={handleConfirmTrip}
+          disabled={!departureLocation || !destinationLocation}
+        >
+          <Text style={styles.confirmButtonText}>Confirmer le trajet</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#F5F5F5",
   },
-  keyboardAvoidingView: {
-    flex: 1,
+  header: {
+    paddingTop: 8,
+    paddingBottom: 16,
+    alignItems: "center",
   },
-  handle: {
-    width: 40,
+  statusBar: {
+    width: 60,
     height: 4,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: "#D1D5DB",
     borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 8,
     marginBottom: 16,
   },
-  currentLocationSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  currentLocationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  currentLocationIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  currentLocationIconText: {
+  headerTitle: {
     fontSize: 20,
+    fontWeight: "600",
+    color: "#1F2937",
   },
-  currentLocationInfo: {
-    flex: 1,
-  },
-  currentLocationName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  currentLocationAddress: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  searchSection: {
+  inputContainer: {
     paddingHorizontal: 20,
     marginBottom: 24,
   },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inputIcon: {
+    marginRight: 12,
+    width: 20,
+    alignItems: "center",
+  },
+  departureDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#10B981",
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: "#1F2937",
+  },
+  routeLine: {
+    width: 2,
+    height: 20,
+    backgroundColor: "#E5E7EB",
+    marginLeft: 9,
+    marginVertical: 4,
+  },
+  quickActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  quickActionButton: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    marginHorizontal: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  quickActionIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  quickActionText: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  searchSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  searchIconContainer: {
+    width: 24,
+    height: 24,
+    marginRight: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchIcon: {
-    marginRight: 12,
-  },
-  searchIconText: {
-    fontSize: 18,
+    fontSize: 16,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
+    color: "#374151",
   },
   locationsList: {
     flex: 1,
     paddingHorizontal: 20,
   },
   locationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  locationIcon: {
+  currentLocationItem: {
+    backgroundColor: "#F0F9FF",
+    borderColor: "#3B82F6",
+    borderWidth: 1,
+  },
+  currentLocationIcon: {
+    backgroundColor: "#EF4444",
+  },
+  currentLocationName: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#6B7280",
+  },
+  iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
   },
-  locationIconText: {
-    fontSize: 18,
+  locationIcon: {
+    fontSize: 16,
   },
-  locationInfo: {
+  locationContent: {
     flex: 1,
   },
   locationName: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#1F2937',
+    fontWeight: "500",
+    color: "#111827",
     marginBottom: 2,
   },
   locationAddress: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#9CA3AF",
+    lineHeight: 18,
   },
-});
+  confirmSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  confirmButton: {
+    backgroundColor: "#3B82F6",
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  confirmButtonDisabled: {
+    backgroundColor: "#D1D5DB",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+})
