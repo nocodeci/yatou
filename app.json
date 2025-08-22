@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Yatou",
+    "slug": "yatou-delivery",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logos/Logo-yatou-01.png",
+    "scheme": "yatou",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/logos/Logo-yatou-01.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#DC2626"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyBOwNDFwx9EerTB29GCdwyCyaaQIDgs9UI"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Cette application utilise votre position pour vous localiser sur la carte et calculer les itinéraires de livraison."
+      }
+    },
+    "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBOwNDFwx9EerTB29GCdwyCyaaQIDgs9UI"
+        }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/logos/Logo-yatou-01.png"
+    },
+    "plugins": [
+      "expo-router", 
+      "expo-font", 
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Cette application utilise votre position pour vous localiser sur la carte et calculer les itinéraires de livraison."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
