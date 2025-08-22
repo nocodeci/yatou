@@ -80,7 +80,7 @@ export default function ImprovedHomeScreen() {
   }, [params])
 
   const handleSearchBarPress = () => {
-    router.push("/new-delivery")
+    router.push("/select-locations")
   }
 
 
