@@ -2,12 +2,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { API_CONFIG } from '../config/api';
 
 // Configuration Google Maps
 const GOOGLE_MAPS_CONFIG = {
-  // Clé API Google Maps (sécurisée)
-  API_KEY: API_CONFIG.GOOGLE_MAPS_API_KEY,
+  // Clé API Google Maps
+  API_KEY: "AIzaSyBOwNDFwx9EerTB29GCdwyCyaaQIDgs9UI",
   // Coordonnées de Bouaké, Côte d'Ivoire
   DEFAULT_CENTER: {
     latitude: 7.6833,
