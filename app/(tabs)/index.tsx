@@ -422,7 +422,7 @@ export default function ImprovedHomeScreen() {
       <Modal
         visible={showModal}
         transparent={true}
-        animationType="slide"
+        animationType="none"
         onRequestClose={handleModalClose}
       >
         <View style={styles.modalOverlay}>
@@ -457,7 +457,7 @@ export default function ImprovedHomeScreen() {
                   />
                 </View>
 
-                <View style={styles.routeLine} />
+                <View style={styles.modalRouteLine} />
 
                 <View style={styles.inputWrapper}>
                   <View style={styles.inputIcon}>
@@ -1236,7 +1236,7 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     fontWeight: "500",
   },
-  routeLine: {
+  modalRouteLine: {
     width: 2,
     height: 20,
     backgroundColor: "#E5E7EB",
