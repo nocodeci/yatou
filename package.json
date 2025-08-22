@@ -37,8 +37,10 @@
     "react": "^19.0.0",
     "react-dom": "19.0.0",
     "react-native": "^0.79.1",
+    "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-mapbox-gl": "^5.2.1-deprecated",
+    "react-native-maps": "1.20.1",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.3.0",
     "react-native-screens": "~4.10.0",
@@ -46,8 +48,7 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
-    "zustand": "^5.0.7",
-    "react-native-maps": "1.20.1"
+    "zustand": "^5.0.7"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -9,6 +9,7 @@ import { useRouter } from "expo-router"
 import { AppColors } from "@/app/constants/colors"
 import YatouLogo from "@/components/YatouLogo"
 import GoogleMapViewComponent from "@/components/MapView"
+import { API_CONFIG } from "@/config/api"
 
 export default function ImprovedHomeScreen() {
   const router = useRouter()
@@ -73,7 +74,7 @@ export default function ImprovedHomeScreen() {
 
     try {
       // Utiliser directement l'API Google Places pour l'autocomplétion avec les meilleures pratiques
-      const apiKey = "AIzaSyBOwNDFwx9EerTB29GCdwyCyaaQIDgs9UI"
+      const apiKey = API_CONFIG.GOOGLE_PLACES_API_KEY
       
       // Construire l'URL avec les paramètres optimaux selon la documentation
       const params = new URLSearchParams({
