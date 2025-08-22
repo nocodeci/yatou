@@ -11,10 +11,10 @@ import {
   Dimensions,
   Animated,
   TextInput,
+  Modal,
 } from "react-native"
 import { Plus, MapPin, Clock, Star } from "lucide-react-native"
 import { useRouter } from "expo-router"
-import { Modalize } from 'react-native-modalize'
 
 import { AppColors } from "@/app/constants/colors"
 import YatouLogo from "@/components/YatouLogo"
@@ -43,10 +43,12 @@ export default function ImprovedHomeScreen() {
 
   const [pickupLocation, setPickupLocation] = useState("")
   const [destinationLocation, setDestinationLocation] = useState("")
+  const [showModal, setShowModal] = useState(false)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(50)).current
-  const modalizeRef = useRef<Modalize>(null)
+  const modalSlideAnim = useRef(new Animated.Value(300)).current
+  const modalScaleAnim = useRef(new Animated.Value(0.8)).current
 
   const mapRef = useRef<any>(null)
 
@@ -83,17 +85,44 @@ export default function ImprovedHomeScreen() {
   }, [params])
 
   const handleSearchBarPress = () => {
-    modalizeRef.current?.open()
+    setShowModal(true)
+    // Animation d'ouverture avec effet de profondeur
+    Animated.parallel([
+      Animated.timing(modalSlideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalScaleAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start()
   }
 
   const handleModalClose = () => {
-    modalizeRef.current?.close()
+    // Animation de fermeture
+    Animated.parallel([
+      Animated.timing(modalSlideAnim, {
+        toValue: 300,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalScaleAnim, {
+        toValue: 0.8,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowModal(false)
+    })
   }
 
   const handleConfirmTrip = () => {
     if (pickupLocation && destinationLocation) {
       console.log("Trip confirmed:", { pickup: pickupLocation, destination: destinationLocation })
-      modalizeRef.current?.close()
+      setShowModal(false)
       // Here you can add navigation to booking screen or other logic
     }
   }
@@ -390,74 +419,89 @@ export default function ImprovedHomeScreen() {
         )}
       </View>
 
-      <Modalize ref={modalizeRef} onClose={handleModalClose}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Planifier votre trajet</Text>
-            <TouchableOpacity onPress={handleModalClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.modalContent}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputWrapper}>
-                <View style={styles.inputIcon}>
-                  <View style={styles.pickupDot} />
-                </View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Lieu de prise en charge"
-                  placeholderTextColor="#9CA3AF"
-                  value={pickupLocation}
-                  onChangeText={setPickupLocation}
-                />
-              </View>
-
-              <View style={styles.routeLine} />
-
-              <View style={styles.inputWrapper}>
-                <View style={styles.inputIcon}>
-                  <MapPin size={16} color="#EF4444" />
-                </View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Destination"
-                  placeholderTextColor="#9CA3AF"
-                  value={destinationLocation}
-                  onChangeText={setDestinationLocation}
-                />
-              </View>
-            </View>
-
-            <View style={styles.quickActions}>
-              <TouchableOpacity style={styles.quickActionButton}>
-                <Text style={styles.quickActionIcon}>🏠</Text>
-                <Text style={styles.quickActionText}>Domicile</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.quickActionButton}>
-                <Text style={styles.quickActionIcon}>💼</Text>
-                <Text style={styles.quickActionText}>Bureau</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.quickActionButton}>
-                <Text style={styles.quickActionIcon}>📍</Text>
-                <Text style={styles.quickActionText}>Récents</Text>
+      <Modal
+        visible={showModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleModalClose}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              {
+                transform: [{ translateY: modalSlideAnim }],
+                opacity: modalScaleAnim,
+              },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Planifier votre trajet</Text>
+              <TouchableOpacity onPress={handleModalClose} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.confirmButton,
-                (!pickupLocation || !destinationLocation) && styles.confirmButtonDisabled,
-              ]}
-              onPress={handleConfirmTrip}
-              disabled={!pickupLocation || !destinationLocation}
-            >
-              <Text style={styles.confirmButtonText}>Confirmer le trajet</Text>
-            </TouchableOpacity>
-          </View>
+            <View style={styles.modalContent}>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
+                  <View style={styles.inputIcon}>
+                    <View style={styles.pickupDot} />
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Lieu de prise en charge"
+                    placeholderTextColor="#9CA3AF"
+                    value={pickupLocation}
+                    onChangeText={setPickupLocation}
+                  />
+                </View>
+
+                <View style={styles.routeLine} />
+
+                <View style={styles.inputWrapper}>
+                  <View style={styles.inputIcon}>
+                    <MapPin size={16} color="#EF4444" />
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Destination"
+                    placeholderTextColor="#9CA3AF"
+                    value={destinationLocation}
+                    onChangeText={setDestinationLocation}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.quickActions}>
+                <TouchableOpacity style={styles.quickActionButton}>
+                  <Text style={styles.quickActionIcon}>🏠</Text>
+                  <Text style={styles.quickActionText}>Domicile</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickActionButton}>
+                  <Text style={styles.quickActionIcon}>💼</Text>
+                  <Text style={styles.quickActionText}>Bureau</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickActionButton}>
+                  <Text style={styles.quickActionIcon}>📍</Text>
+                  <Text style={styles.quickActionText}>Récents</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  (!pickupLocation || !destinationLocation) && styles.confirmButtonDisabled,
+                ]}
+                onPress={handleConfirmTrip}
+                disabled={!pickupLocation || !destinationLocation}
+              >
+                <Text style={styles.confirmButtonText}>Confirmer le trajet</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
         </View>
-      </Modalize>
+      </Modal>
 
       <Animated.View
         style={[
