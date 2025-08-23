@@ -131,6 +131,14 @@ export default function SelectLocationsScreen() {
   // URL du backend
   const BACKEND_URL = "http://192.168.100.196:3000"
 
+  // Log de l'état actuel
+  console.log("🔄 État actuel:", {
+    departureLocation,
+    destinationLocation,
+    activeField,
+    searchResultsCount: searchResults.length
+  })
+
   // Fonction pour rechercher des lieux via l'API Google Places
   const searchPlaces = async (query: string) => {
     if (query.length < 2) {
@@ -222,23 +230,35 @@ export default function SelectLocationsScreen() {
 
   const handleLocationSelect = async (location: LocationItem) => {
     console.log("📍 Sélection lieu prédéfini:", location.name, "pour le champ:", activeField)
+    console.log("📍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
     
     if (activeField === "departure") {
+      console.log("📍 Mise à jour lieu de départ avec:", location.name)
       setDepartureLocation(location.name)
       // Coordonnées par défaut pour les lieux prédéfinis
       setDepartureCoords("-5.0301,7.6901")
     } else if (activeField === "destination") {
+      console.log("📍 Mise à jour lieu de destination avec:", location.name)
       setDestinationLocation(location.name)
       setDestinationCoords("-5.0289,7.6895")
+    } else {
+      console.log("❌ Aucun champ actif détecté")
     }
     
     // Fermer le champ actif et vider les résultats
+    console.log("📍 Fermeture du champ actif et vidage des résultats")
     setActiveField(null)
     setSearchResults([])
+    
+    // Log après mise à jour
+    setTimeout(() => {
+      console.log("📍 État après mise à jour - départ:", departureLocation, "destination:", destinationLocation)
+    }, 100)
   }
 
   const handleSearchResultSelect = async (result: SearchResult) => {
     console.log("🔍 Sélection résultat recherche:", result.structured_formatting.main_text, "pour le champ:", activeField)
+    console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
     
     const placeName = result.structured_formatting.main_text
     const placeAddress = result.structured_formatting.secondary_text
@@ -248,16 +268,26 @@ export default function SelectLocationsScreen() {
     const coordsString = coords ? `${coords.lng},${coords.lat}` : ""
 
     if (activeField === "departure") {
+      console.log("🔍 Mise à jour lieu de départ avec:", placeName)
       setDepartureLocation(placeName)
       setDepartureCoords(coordsString)
     } else if (activeField === "destination") {
+      console.log("🔍 Mise à jour lieu de destination avec:", placeName)
       setDestinationLocation(placeName)
       setDestinationCoords(coordsString)
+    } else {
+      console.log("❌ Aucun champ actif détecté")
     }
 
     // Fermer le champ actif et vider les résultats
+    console.log("🔍 Fermeture du champ actif et vidage des résultats")
     setActiveField(null)
     setSearchResults([])
+    
+    // Log après mise à jour
+    setTimeout(() => {
+      console.log("🔍 État après mise à jour - départ:", departureLocation, "destination:", destinationLocation)
+    }, 100)
   }
 
   const handleConfirmTrip = async () => {
@@ -353,8 +383,14 @@ export default function SelectLocationsScreen() {
             placeholderTextColor="#9CA3AF"
             value={departureLocation}
             onChangeText={setDepartureLocation}
-            onFocus={() => setActiveField("departure")}
-            onBlur={() => setActiveField(null)}
+            onFocus={() => {
+              console.log("🎯 Focus sur champ départ")
+              setActiveField("departure")
+            }}
+            onBlur={() => {
+              console.log("🎯 Blur sur champ départ")
+              setActiveField(null)
+            }}
           />
         </View>
 
@@ -371,8 +407,14 @@ export default function SelectLocationsScreen() {
             placeholderTextColor="#9CA3AF"
             value={destinationLocation}
             onChangeText={setDestinationLocation}
-            onFocus={() => setActiveField("destination")}
-            onBlur={() => setActiveField(null)}
+            onFocus={() => {
+              console.log("🎯 Focus sur champ destination")
+              setActiveField("destination")
+            }}
+            onBlur={() => {
+              console.log("🎯 Blur sur champ destination")
+              setActiveField(null)
+            }}
           />
         </View>
       </View>
