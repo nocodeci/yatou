@@ -198,6 +198,8 @@ export default function SelectLocationsScreen() {
   const calculateRoute = async () => {
     if (!departureCoords || !destinationCoords) {
       console.log("❌ Coordonnées manquantes pour le calcul d'itinéraire")
+      console.log("📍 Coordonnées départ:", departureCoords)
+      console.log("📍 Coordonnées destination:", destinationCoords)
       return
     }
 
@@ -205,17 +207,26 @@ export default function SelectLocationsScreen() {
       const origin = `${departureCoords.lat},${departureCoords.lng}`
       const destination = `${destinationCoords.lat},${destinationCoords.lng}`
       
+      console.log("🗺️ Calcul itinéraire avec coordonnées:")
+      console.log("📍 Origine:", origin)
+      console.log("📍 Destination:", destination)
+      
       const response = await fetch(
         `${BACKEND_URL}/api/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
       )
       const data = await response.json()
 
+      console.log("🗺️ Réponse API Directions:", data)
+
       if (data.status === "OK" && data.routes && data.routes.length > 0) {
         console.log("✅ Itinéraire calculé avec succès")
         return data.routes[0]
+      } else {
+        console.error("❌ Erreur dans la réponse Directions:", data.status)
+        console.error("📊 Détails:", data)
       }
     } catch (error) {
-      console.error("Erreur lors du calcul d'itinéraire:", error)
+      console.error("💥 Erreur lors du calcul d'itinéraire:", error)
     }
     return null
   }
@@ -288,6 +299,12 @@ export default function SelectLocationsScreen() {
       console.log("✅ Lieu de départ mis à jour:", result.description, "avec coordonnées:", coords)
       // Activer automatiquement le champ destination après sélection
       setActiveField("destination")
+      
+      // Calculer l'itinéraire si la destination est déjà définie
+      if (destinationCoords) {
+        console.log("🗺️ Calcul itinéraire après sélection départ")
+        await calculateRoute()
+      }
     } else if (activeField === "destination") {
       console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
       setDestinationLocation(result.description)
@@ -295,17 +312,18 @@ export default function SelectLocationsScreen() {
       console.log("✅ Lieu de destination mis à jour:", result.description, "avec coordonnées:", coords)
       // Activer automatiquement le champ départ après sélection
       setActiveField("departure")
+      
+      // Calculer l'itinéraire si le départ est déjà défini
+      if (departureCoords) {
+        console.log("🗺️ Calcul itinéraire après sélection destination")
+        await calculateRoute()
+      }
     } else {
       console.log("❌ Aucun champ actif détecté")
       console.log("🔍 Fermeture du champ actif")
     }
     
     console.log("🔍 État après mise à jour - départ:", departureLocation, "destination:", destinationLocation)
-    
-    // Calculer l'itinéraire si les deux lieux sont définis
-    if (departureCoords && destinationCoords) {
-      await calculateRoute()
-    }
     
     setIsSelecting(false)
   }
