@@ -203,16 +203,22 @@ export default function SelectLocationsScreen() {
 
   // Effet pour la recherche en temps réel
   useEffect(() => {
-    if (searchQuery.length >= 2) {
+    if (activeField === "departure" && departureLocation.length >= 2) {
       const timeoutId = setTimeout(() => {
-        searchPlaces(searchQuery)
+        searchPlaces(departureLocation)
+      }, 300) // Délai de 300ms pour éviter trop de requêtes
+
+      return () => clearTimeout(timeoutId)
+    } else if (activeField === "destination" && destinationLocation.length >= 2) {
+      const timeoutId = setTimeout(() => {
+        searchPlaces(destinationLocation)
       }, 300) // Délai de 300ms pour éviter trop de requêtes
 
       return () => clearTimeout(timeoutId)
     } else {
       setSearchResults([])
     }
-  }, [searchQuery])
+  }, [departureLocation, destinationLocation, activeField])
 
   const handleLocationSelect = async (location: LocationItem) => {
     if (activeField === "departure") {
@@ -223,7 +229,6 @@ export default function SelectLocationsScreen() {
       setDestinationLocation(location.name)
       setDestinationCoords("-5.0289,7.6895")
     }
-    setSearchQuery("")
     setActiveField(null)
   }
 
@@ -243,7 +248,6 @@ export default function SelectLocationsScreen() {
       setDestinationCoords(coordsString)
     }
 
-    setSearchQuery("")
     setActiveField(null)
     setSearchResults([])
   }
@@ -388,32 +392,20 @@ export default function SelectLocationsScreen() {
         {/* Suggestions directement en dessous */}
         {activeField && (
           <>
-            {/* Barre de recherche pour les suggestions */}
-            <View style={styles.searchSection}>
-              <View style={styles.searchIconContainer}>
-                <Text style={styles.searchIcon}>🔍</Text>
-              </View>
-              <TextInput
-                style={styles.searchInput}
-                placeholder={`Rechercher ${activeField === "departure" ? "un lieu de départ" : "une destination"}...`}
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-
             {/* Liste des suggestions */}
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <Text style={styles.loadingText}>Recherche en cours...</Text>
               </View>
-            ) : searchQuery && searchResults.length > 0 ? (
-              // Résultats de recherche Google Places
-              searchResults.map(renderSearchResult)
-            ) : searchQuery && searchResults.length === 0 ? (
-              <View style={styles.noResultsContainer}>
-                <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
-              </View>
+            ) : (activeField === "departure" && departureLocation.length >= 2) || (activeField === "destination" && destinationLocation.length >= 2) ? (
+              searchResults.length > 0 ? (
+                // Résultats de recherche Google Places
+                searchResults.map(renderSearchResult)
+              ) : (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
+                </View>
+              )
             ) : (
               // Lieux prédéfinis
               predefinedLocations.map(renderLocationItem)
@@ -519,36 +511,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#374151",
     fontWeight: "500",
-  },
-  searchSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  searchIconContainer: {
-    width: 24,
-    height: 24,
-    marginRight: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  searchIcon: {
-    fontSize: 16,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: "#374151",
   },
   locationItem: {
     flexDirection: "row",
