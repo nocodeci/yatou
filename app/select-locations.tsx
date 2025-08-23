@@ -225,15 +225,9 @@ export default function SelectLocationsScreen() {
       }, 300) // Délai de 300ms pour éviter trop de requêtes
 
       return () => clearTimeout(timeoutId)
-    } else if (!activeField && !isSelecting) {
-      // Ne vider les résultats que si aucun champ n'est actif ET qu'on n'est pas en train de sélectionner
-      const timeoutId = setTimeout(() => {
-        setSearchResults([])
-      }, 500) // Délai de 500ms pour permettre la sélection
-
-      return () => clearTimeout(timeoutId)
     }
-  }, [departureLocation, destinationLocation, activeField, isSelecting])
+    // Suppression de la logique qui vide les suggestions
+  }, [departureLocation, destinationLocation, activeField])
 
   const handleLocationSelect = async (location: LocationItem) => {
     console.log("📍 Sélection lieu prédéfini:", location.name, "pour le champ:", activeField)
@@ -440,29 +434,22 @@ export default function SelectLocationsScreen() {
 
       {/* Actions rapides et suggestions dans le même ScrollView */}
       <ScrollView style={styles.quickActionsContainer} showsVerticalScrollIndicator={false}>
-        {/* Suggestions directement */}
-        {activeField && (
-          <>
-            {/* Liste des suggestions */}
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Recherche en cours...</Text>
-              </View>
-            ) : (activeField === "departure" && departureLocation.length >= 2) || (activeField === "destination" && destinationLocation.length >= 2) ? (
-              searchResults.length > 0 ? (
-                // Résultats de recherche Google Places
-                searchResults.map(renderSearchResult)
-              ) : (
-                <View style={styles.noResultsContainer}>
-                  <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
-                </View>
-              )
-            ) : (
-              // Lieux prédéfinis (sans emplacement actuel)
-              predefinedLocations.filter(location => location.type !== "current").map(renderLocationItem)
-            )}
-          </>
-        )}
+        {/* Suggestions toujours visibles */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Recherche en cours...</Text>
+          </View>
+        ) : searchResults.length > 0 ? (
+          // Résultats de recherche Google Places
+          searchResults.map(renderSearchResult)
+        ) : activeField && (departureLocation.length >= 2 || destinationLocation.length >= 2) ? (
+          <View style={styles.noResultsContainer}>
+            <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
+          </View>
+        ) : activeField ? (
+          // Lieux prédéfinis (sans emplacement actuel)
+          predefinedLocations.filter(location => location.type !== "current").map(renderLocationItem)
+        ) : null}
       </ScrollView>
 
       {/* Bouton de confirmation */}
