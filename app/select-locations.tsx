@@ -398,7 +398,8 @@ export default function SelectLocationsScreen() {
             }}
             onBlur={() => {
               console.log("🎯 Blur sur champ départ, isSelecting:", isSelecting)
-              if (!isSelecting) {
+              // Ne pas fermer le champ s'il y a des suggestions visibles
+              if (!isSelecting && searchResults.length === 0) {
                 setActiveField(null)
               }
             }}
@@ -424,7 +425,8 @@ export default function SelectLocationsScreen() {
             }}
             onBlur={() => {
               console.log("🎯 Blur sur champ destination, isSelecting:", isSelecting)
-              if (!isSelecting) {
+              // Ne pas fermer le champ s'il y a des suggestions visibles
+              if (!isSelecting && searchResults.length === 0) {
                 setActiveField(null)
               }
             }}
