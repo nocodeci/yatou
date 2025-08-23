@@ -225,10 +225,15 @@ export default function SelectLocationsScreen() {
       }, 300) // Délai de 300ms pour éviter trop de requêtes
 
       return () => clearTimeout(timeoutId)
-    } else {
-      setSearchResults([])
+    } else if (!activeField && !isSelecting) {
+      // Ne vider les résultats que si aucun champ n'est actif ET qu'on n'est pas en train de sélectionner
+      const timeoutId = setTimeout(() => {
+        setSearchResults([])
+      }, 500) // Délai de 500ms pour permettre la sélection
+
+      return () => clearTimeout(timeoutId)
     }
-  }, [departureLocation, destinationLocation, activeField])
+  }, [departureLocation, destinationLocation, activeField, isSelecting])
 
   const handleLocationSelect = async (location: LocationItem) => {
     console.log("📍 Sélection lieu prédéfini:", location.name, "pour le champ:", activeField)
@@ -247,10 +252,9 @@ export default function SelectLocationsScreen() {
       console.log("❌ Aucun champ actif détecté")
     }
     
-    // Fermer le champ actif et vider les résultats
-    console.log("📍 Fermeture du champ actif et vidage des résultats")
+    // Fermer le champ actif mais ne pas vider immédiatement les résultats
+    console.log("📍 Fermeture du champ actif")
     setActiveField(null)
-    setSearchResults([])
     
     // Réinitialiser l'état de sélection après un délai
     setTimeout(() => {
@@ -282,10 +286,9 @@ export default function SelectLocationsScreen() {
       console.log("❌ Aucun champ actif détecté")
     }
 
-    // Fermer le champ actif et vider les résultats
-    console.log("🔍 Fermeture du champ actif et vidage des résultats")
+    // Fermer le champ actif mais ne pas vider immédiatement les résultats
+    console.log("🔍 Fermeture du champ actif")
     setActiveField(null)
-    setSearchResults([])
     
     // Réinitialiser l'état de sélection après un délai
     setTimeout(() => {
