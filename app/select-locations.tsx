@@ -323,11 +323,6 @@ export default function SelectLocationsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.statusBar} />
-        <Text style={styles.headerTitle}>Planifier votre trajet</Text>
-      </View>
-
       <View style={styles.inputContainer}>
         {/* Lieu de départ */}
         <View style={styles.inputWrapper}>
@@ -364,30 +359,32 @@ export default function SelectLocationsScreen() {
         </View>
       </View>
 
-      {/* Actions rapides */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity 
-          style={styles.quickActionButton}
-          onPress={() => setDepartureLocation("Domicile")}
-        >
-          <Text style={styles.quickActionIcon}>🏠</Text>
-          <Text style={styles.quickActionText}>Domicile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.quickActionButton}
-          onPress={() => setDepartureLocation("Bureau")}
-        >
-          <Text style={styles.quickActionIcon}>💼</Text>
-          <Text style={styles.quickActionText}>Bureau</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.quickActionButton}
-          onPress={() => setDepartureLocation("Position actuelle")}
-        >
-          <Text style={styles.quickActionIcon}>📍</Text>
-          <Text style={styles.quickActionText}>Ma position</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Actions rapides en colonnes */}
+      <ScrollView style={styles.quickActionsContainer} showsVerticalScrollIndicator={false}>
+        <View style={styles.quickActions}>
+          <TouchableOpacity 
+            style={styles.quickActionButton}
+            onPress={() => setDepartureLocation("Domicile")}
+          >
+            <Text style={styles.quickActionIcon}>🏠</Text>
+            <Text style={styles.quickActionText}>Domicile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.quickActionButton}
+            onPress={() => setDepartureLocation("Bureau")}
+          >
+            <Text style={styles.quickActionIcon}>💼</Text>
+            <Text style={styles.quickActionText}>Bureau</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.quickActionButton}
+            onPress={() => setDepartureLocation("Position actuelle")}
+          >
+            <Text style={styles.quickActionIcon}>📍</Text>
+            <Text style={styles.quickActionText}>Ma position</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
       {/* Barre de recherche pour les suggestions */}
       {activeField && (
@@ -450,26 +447,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F5F5",
   },
-  header: {
-    paddingTop: 8,
-    paddingBottom: 16,
-    alignItems: "center",
-  },
-  statusBar: {
-    width: 60,
-    height: 4,
-    backgroundColor: "#D1D5DB",
-    borderRadius: 2,
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#1F2937",
-  },
   inputContainer: {
     paddingHorizontal: 20,
-    marginBottom: 24,
+    paddingTop: 10,
+    marginBottom: 16,
   },
   inputWrapper: {
     flexDirection: "row",
@@ -477,8 +458,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    marginBottom: 8,
+    paddingVertical: 14,
+    marginBottom: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -503,25 +484,26 @@ const styles = StyleSheet.create({
   },
   routeLine: {
     width: 2,
-    height: 20,
+    height: 16,
     backgroundColor: "#E5E7EB",
     marginLeft: 9,
-    marginVertical: 4,
+    marginVertical: 2,
+  },
+  quickActionsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   quickActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginBottom: 24,
+    flexDirection: "column",
+    gap: 8,
   },
   quickActionButton: {
-    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    marginHorizontal: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -530,22 +512,22 @@ const styles = StyleSheet.create({
   },
   quickActionIcon: {
     fontSize: 20,
-    marginBottom: 4,
+    marginRight: 12,
   },
   quickActionText: {
-    fontSize: 12,
-    color: "#6B7280",
+    fontSize: 16,
+    color: "#374151",
     fontWeight: "500",
   },
   searchSection: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 12,
     backgroundColor: "#FFFFFF",
     marginHorizontal: 20,
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
