@@ -359,7 +359,7 @@ export default function SelectLocationsScreen() {
         </View>
       </View>
 
-      {/* Actions rapides en colonnes */}
+      {/* Actions rapides et suggestions dans le même ScrollView */}
       <ScrollView style={styles.quickActionsContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.quickActions}>
           <TouchableOpacity 
@@ -384,44 +384,43 @@ export default function SelectLocationsScreen() {
             <Text style={styles.quickActionText}>Ma position</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Suggestions directement en dessous */}
+        {activeField && (
+          <>
+            {/* Barre de recherche pour les suggestions */}
+            <View style={styles.searchSection}>
+              <View style={styles.searchIconContainer}>
+                <Text style={styles.searchIcon}>🔍</Text>
+              </View>
+              <TextInput
+                style={styles.searchInput}
+                placeholder={`Rechercher ${activeField === "departure" ? "un lieu de départ" : "une destination"}...`}
+                placeholderTextColor="#9CA3AF"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
+            {/* Liste des suggestions */}
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Recherche en cours...</Text>
+              </View>
+            ) : searchQuery && searchResults.length > 0 ? (
+              // Résultats de recherche Google Places
+              searchResults.map(renderSearchResult)
+            ) : searchQuery && searchResults.length === 0 ? (
+              <View style={styles.noResultsContainer}>
+                <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
+              </View>
+            ) : (
+              // Lieux prédéfinis
+              predefinedLocations.map(renderLocationItem)
+            )}
+          </>
+        )}
       </ScrollView>
-
-      {/* Barre de recherche pour les suggestions */}
-      {activeField && (
-        <View style={styles.searchSection}>
-          <View style={styles.searchIconContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
-          </View>
-          <TextInput
-            style={styles.searchInput}
-            placeholder={`Rechercher ${activeField === "departure" ? "un lieu de départ" : "une destination"}...`}
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      )}
-
-      {/* Liste des suggestions */}
-      {activeField && (
-        <ScrollView style={styles.locationsList} showsVerticalScrollIndicator={false}>
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Recherche en cours...</Text>
-            </View>
-          ) : searchQuery && searchResults.length > 0 ? (
-            // Résultats de recherche Google Places
-            searchResults.map(renderSearchResult)
-          ) : searchQuery && searchResults.length === 0 ? (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
-            </View>
-          ) : (
-            // Lieux prédéfinis
-            predefinedLocations.map(renderLocationItem)
-          )}
-        </ScrollView>
-      )}
 
       {/* Bouton de confirmation */}
       <View style={styles.confirmSection}>
@@ -490,12 +489,14 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   quickActionsContainer: {
+    flex: 1,
     paddingHorizontal: 20,
     marginBottom: 16,
   },
   quickActions: {
     flexDirection: "column",
     gap: 8,
+    marginBottom: 16,
   },
   quickActionButton: {
     flexDirection: "row",
@@ -548,10 +549,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#374151",
-  },
-  locationsList: {
-    flex: 1,
-    paddingHorizontal: 20,
   },
   locationItem: {
     flexDirection: "row",
