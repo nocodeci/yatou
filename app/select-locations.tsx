@@ -234,9 +234,6 @@ export default function SelectLocationsScreen() {
     console.log("📍 Sélection lieu prédéfini:", location.name, "pour le champ:", activeField)
     console.log("📍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
     
-    // Marquer qu'une sélection est en cours
-    setIsSelecting(true)
-    
     if (activeField === "departure") {
       console.log("📍 Mise à jour lieu de départ avec:", location.name)
       setDepartureLocation(location.name)
@@ -265,9 +262,6 @@ export default function SelectLocationsScreen() {
   const handleSearchResultSelect = async (result: SearchResult) => {
     console.log("🔍 Sélection résultat recherche:", result.structured_formatting.main_text, "pour le champ:", activeField)
     console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
-    
-    // Marquer qu'une sélection est en cours
-    setIsSelecting(true)
     
     const placeName = result.structured_formatting.main_text
     const placeAddress = result.structured_formatting.secondary_text
@@ -340,8 +334,12 @@ export default function SelectLocationsScreen() {
       <TouchableOpacity
         key={item.id}
         style={[styles.locationItem, isCurrentLocation && styles.currentLocationItem]}
+        onPressIn={() => {
+          console.log("🖱️ PressIn sur lieu prédéfini:", item.name)
+          setIsSelecting(true)
+        }}
         onPress={() => {
-          console.log("🖱️ Clic sur lieu prédéfini:", item.name)
+          console.log("🖱️ Press sur lieu prédéfini:", item.name)
           handleLocationSelect(item)
         }}
         activeOpacity={0.7}
@@ -362,8 +360,12 @@ export default function SelectLocationsScreen() {
       <TouchableOpacity
         key={result.place_id}
         style={styles.searchResultItem}
+        onPressIn={() => {
+          console.log("🖱️ PressIn sur résultat recherche:", result.structured_formatting.main_text)
+          setIsSelecting(true)
+        }}
         onPress={() => {
-          console.log("🖱️ Clic sur résultat recherche:", result.structured_formatting.main_text)
+          console.log("🖱️ Press sur résultat recherche:", result.structured_formatting.main_text)
           handleSearchResultSelect(result)
         }}
         activeOpacity={0.7}
