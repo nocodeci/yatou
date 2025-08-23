@@ -273,18 +273,26 @@ export default function SelectLocationsScreen() {
     console.log("🖱️ Press sur résultat recherche:", result.description)
     console.log("🔍 Sélection résultat recherche:", result.description, "pour le champ:", activeField)
     
+    // Obtenir les coordonnées du lieu sélectionné
+    const coords = await getPlaceDetails(result.place_id)
+    
+    if (!coords) {
+      console.error("❌ Impossible d'obtenir les coordonnées du lieu")
+      return
+    }
+    
     if (activeField === "departure") {
       console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
       setDepartureLocation(result.description)
-      setDepartureCoords({ lat: result.geometry.location.lat, lng: result.geometry.location.lng })
-      console.log("✅ Lieu de départ mis à jour:", result.description)
+      setDepartureCoords(coords)
+      console.log("✅ Lieu de départ mis à jour:", result.description, "avec coordonnées:", coords)
       // Activer automatiquement le champ destination après sélection
       setActiveField("destination")
     } else if (activeField === "destination") {
       console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
       setDestinationLocation(result.description)
-      setDestinationCoords({ lat: result.geometry.location.lat, lng: result.geometry.location.lng })
-      console.log("✅ Lieu de destination mis à jour:", result.description)
+      setDestinationCoords(coords)
+      console.log("✅ Lieu de destination mis à jour:", result.description, "avec coordonnées:", coords)
       // Activer automatiquement le champ départ après sélection
       setActiveField("departure")
     } else {
