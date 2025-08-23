@@ -127,6 +127,7 @@ export default function SelectLocationsScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [departureCoords, setDepartureCoords] = useState<string>("")
   const [destinationCoords, setDestinationCoords] = useState<string>("")
+  const [isSelecting, setIsSelecting] = useState(false) // Nouvel état pour éviter les conflits
 
   // URL du backend
   const BACKEND_URL = "http://192.168.100.196:3000"
@@ -136,7 +137,8 @@ export default function SelectLocationsScreen() {
     departureLocation,
     destinationLocation,
     activeField,
-    searchResultsCount: searchResults.length
+    searchResultsCount: searchResults.length,
+    isSelecting
   })
 
   // Fonction pour rechercher des lieux via l'API Google Places
@@ -232,6 +234,9 @@ export default function SelectLocationsScreen() {
     console.log("📍 Sélection lieu prédéfini:", location.name, "pour le champ:", activeField)
     console.log("📍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
     
+    // Marquer qu'une sélection est en cours
+    setIsSelecting(true)
+    
     if (activeField === "departure") {
       console.log("📍 Mise à jour lieu de départ avec:", location.name)
       setDepartureLocation(location.name)
@@ -250,15 +255,19 @@ export default function SelectLocationsScreen() {
     setActiveField(null)
     setSearchResults([])
     
-    // Log après mise à jour
+    // Réinitialiser l'état de sélection après un délai
     setTimeout(() => {
+      setIsSelecting(false)
       console.log("📍 État après mise à jour - départ:", departureLocation, "destination:", destinationLocation)
-    }, 100)
+    }, 200)
   }
 
   const handleSearchResultSelect = async (result: SearchResult) => {
     console.log("🔍 Sélection résultat recherche:", result.structured_formatting.main_text, "pour le champ:", activeField)
     console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
+    
+    // Marquer qu'une sélection est en cours
+    setIsSelecting(true)
     
     const placeName = result.structured_formatting.main_text
     const placeAddress = result.structured_formatting.secondary_text
@@ -284,10 +293,11 @@ export default function SelectLocationsScreen() {
     setActiveField(null)
     setSearchResults([])
     
-    // Log après mise à jour
+    // Réinitialiser l'état de sélection après un délai
     setTimeout(() => {
+      setIsSelecting(false)
       console.log("🔍 État après mise à jour - départ:", departureLocation, "destination:", destinationLocation)
-    }, 100)
+    }, 200)
   }
 
   const handleConfirmTrip = async () => {
@@ -388,8 +398,10 @@ export default function SelectLocationsScreen() {
               setActiveField("departure")
             }}
             onBlur={() => {
-              console.log("🎯 Blur sur champ départ")
-              setActiveField(null)
+              console.log("🎯 Blur sur champ départ, isSelecting:", isSelecting)
+              if (!isSelecting) {
+                setActiveField(null)
+              }
             }}
           />
         </View>
@@ -412,8 +424,10 @@ export default function SelectLocationsScreen() {
               setActiveField("destination")
             }}
             onBlur={() => {
-              console.log("🎯 Blur sur champ destination")
-              setActiveField(null)
+              console.log("🎯 Blur sur champ destination, isSelecting:", isSelecting)
+              if (!isSelecting) {
+                setActiveField(null)
+              }
             }}
           />
         </View>
