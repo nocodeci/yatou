@@ -365,31 +365,7 @@ export default function SelectLocationsScreen() {
 
       {/* Actions rapides et suggestions dans le même ScrollView */}
       <ScrollView style={styles.quickActionsContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.quickActions}>
-          <TouchableOpacity 
-            style={styles.quickActionButton}
-            onPress={() => setDepartureLocation("Domicile")}
-          >
-            <Text style={styles.quickActionIcon}>🏠</Text>
-            <Text style={styles.quickActionText}>Domicile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.quickActionButton}
-            onPress={() => setDepartureLocation("Bureau")}
-          >
-            <Text style={styles.quickActionIcon}>💼</Text>
-            <Text style={styles.quickActionText}>Bureau</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.quickActionButton}
-            onPress={() => setDepartureLocation("Position actuelle")}
-          >
-            <Text style={styles.quickActionIcon}>📍</Text>
-            <Text style={styles.quickActionText}>Ma position</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Suggestions directement en dessous */}
+        {/* Suggestions directement */}
         {activeField && (
           <>
             {/* Liste des suggestions */}
@@ -407,8 +383,8 @@ export default function SelectLocationsScreen() {
                 </View>
               )
             ) : (
-              // Lieux prédéfinis
-              predefinedLocations.map(renderLocationItem)
+              // Lieux prédéfinis (sans emplacement actuel)
+              predefinedLocations.filter(location => location.type !== "current").map(renderLocationItem)
             )}
           </>
         )}
@@ -484,33 +460,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     marginBottom: 16,
-  },
-  quickActions: {
-    flexDirection: "column",
-    gap: 8,
-    marginBottom: 16,
-  },
-  quickActionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  quickActionIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  quickActionText: {
-    fontSize: 16,
-    color: "#374151",
-    fontWeight: "500",
   },
   locationItem: {
     flexDirection: "row",
