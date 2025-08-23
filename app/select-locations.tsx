@@ -129,7 +129,7 @@ export default function SelectLocationsScreen() {
   const [destinationCoords, setDestinationCoords] = useState<string>("")
 
   // URL du backend
-  const BACKEND_URL = "http://192.168.100.191:3000"
+  const BACKEND_URL = "http://192.168.100.196:3000"
 
   // Fonction pour rechercher des lieux via l'API Google Places
   const searchPlaces = async (query: string) => {
@@ -139,20 +139,27 @@ export default function SelectLocationsScreen() {
     }
 
     setIsLoading(true)
+    console.log("🔍 Recherche en cours:", query)
+    
     try {
-      const response = await fetch(
-        `${BACKEND_URL}/api/places/autocomplete?input=${encodeURIComponent(query)}`
-      )
+      const url = `${BACKEND_URL}/api/places/autocomplete?input=${encodeURIComponent(query)}`
+      console.log("📡 URL de requête:", url)
+      
+      const response = await fetch(url)
+      console.log("📥 Réponse reçue:", response.status, response.statusText)
+      
       const data = await response.json()
+      console.log("📊 Données reçues:", data)
 
       if (data.status === "OK" && data.predictions) {
+        console.log("✅ Prédictions trouvées:", data.predictions.length)
         setSearchResults(data.predictions)
       } else {
-        console.error("Erreur recherche lieux:", data.error_message)
+        console.error("❌ Erreur recherche lieux:", data.error_message)
         setSearchResults([])
       }
     } catch (error) {
-      console.error("Erreur lors de la recherche:", error)
+      console.error("💥 Erreur lors de la recherche:", error)
       setSearchResults([])
     } finally {
       setIsLoading(false)
@@ -399,15 +406,19 @@ export default function SelectLocationsScreen() {
       )}
 
       {/* Liste des suggestions */}
-      {activeField && (searchQuery || searchResults.length > 0) && (
+      {activeField && (
         <ScrollView style={styles.locationsList} showsVerticalScrollIndicator={false}>
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Recherche en cours...</Text>
             </View>
-          ) : searchQuery ? (
+          ) : searchQuery && searchResults.length > 0 ? (
             // Résultats de recherche Google Places
             searchResults.map(renderSearchResult)
+          ) : searchQuery && searchResults.length === 0 ? (
+            <View style={styles.noResultsContainer}>
+              <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
+            </View>
           ) : (
             // Lieux prédéfinis
             predefinedLocations.map(renderLocationItem)
@@ -658,6 +669,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
+    fontSize: 16,
+    color: "#6B7280",
+  },
+  noResultsContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  noResultsText: {
     fontSize: 16,
     color: "#6B7280",
   },
