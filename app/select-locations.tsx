@@ -125,8 +125,8 @@ export default function SelectLocationsScreen() {
   const [activeField, setActiveField] = useState<"departure" | "destination" | null>(null)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [departureCoords, setDepartureCoords] = useState<string>("")
-  const [destinationCoords, setDestinationCoords] = useState<string>("")
+  const [departureCoords, setDepartureCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [isSelecting, setIsSelecting] = useState(false) // Nouvel état pour éviter les conflits
 
   // URL du backend
@@ -195,14 +195,23 @@ export default function SelectLocationsScreen() {
   }
 
   // Fonction pour calculer l'itinéraire
-  const calculateRoute = async (origin: string, destination: string) => {
+  const calculateRoute = async () => {
+    if (!departureCoords || !destinationCoords) {
+      console.log("❌ Coordonnées manquantes pour le calcul d'itinéraire")
+      return
+    }
+
     try {
+      const origin = `${departureCoords.lat},${departureCoords.lng}`
+      const destination = `${destinationCoords.lat},${destinationCoords.lng}`
+      
       const response = await fetch(
         `${BACKEND_URL}/api/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
       )
       const data = await response.json()
 
       if (data.status === "OK" && data.routes && data.routes.length > 0) {
+        console.log("✅ Itinéraire calculé avec succès")
         return data.routes[0]
       }
     } catch (error) {
@@ -237,58 +246,60 @@ export default function SelectLocationsScreen() {
       console.log("📍 Mise à jour lieu de départ avec:", location.name)
       setDepartureLocation(location.name)
       // Coordonnées par défaut pour les lieux prédéfinis
-      setDepartureCoords("-5.0301,7.6901")
+      setDepartureCoords({ lat: -5.0301, lng: 7.6901 })
+      // Activer automatiquement le champ destination après sélection
+      setActiveField("destination")
     } else if (activeField === "destination") {
       console.log("📍 Mise à jour lieu de destination avec:", location.name)
       setDestinationLocation(location.name)
-      setDestinationCoords("-5.0289,7.6895")
+      setDestinationCoords({ lat: -5.0289, lng: 7.6895 })
+      // Activer automatiquement le champ départ après sélection
+      setActiveField("departure")
     } else {
       console.log("❌ Aucun champ actif détecté")
     }
     
-    // Fermer le champ actif mais ne pas vider immédiatement les résultats
-    console.log("📍 Fermeture du champ actif")
-    setActiveField(null)
+    console.log("📍 État après mise à jour - départ:", departureLocation, "destination:", destinationLocation)
     
-    // Réinitialiser l'état de sélection après un délai
-    setTimeout(() => {
-      setIsSelecting(false)
-      console.log("📍 État après mise à jour - départ:", departureLocation, "destination:", destinationLocation)
-    }, 200)
+    // Calculer l'itinéraire si les deux lieux sont définis
+    if (departureCoords && destinationCoords) {
+      await calculateRoute()
+    }
+    
+    setIsSelecting(false)
   }
 
-  const handleSearchResultSelect = async (result: SearchResult) => {
-    console.log("🔍 Sélection résultat recherche:", result.structured_formatting.main_text, "pour le champ:", activeField)
-    console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
+  const handleSearchResultSelect = async (result: any) => {
+    console.log("🖱️ Press sur résultat recherche:", result.description)
+    console.log("🔍 Sélection résultat recherche:", result.description, "pour le champ:", activeField)
     
-    const placeName = result.structured_formatting.main_text
-    const placeAddress = result.structured_formatting.secondary_text
-
-    // Obtenir les coordonnées du lieu
-    const coords = await getPlaceDetails(result.place_id)
-    const coordsString = coords ? `${coords.lng},${coords.lat}` : ""
-
     if (activeField === "departure") {
-      console.log("🔍 Mise à jour lieu de départ avec:", placeName)
-      setDepartureLocation(placeName)
-      setDepartureCoords(coordsString)
+      console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
+      setDepartureLocation(result.description)
+      setDepartureCoords({ lat: result.geometry.location.lat, lng: result.geometry.location.lng })
+      console.log("✅ Lieu de départ mis à jour:", result.description)
+      // Activer automatiquement le champ destination après sélection
+      setActiveField("destination")
     } else if (activeField === "destination") {
-      console.log("🔍 Mise à jour lieu de destination avec:", placeName)
-      setDestinationLocation(placeName)
-      setDestinationCoords(coordsString)
+      console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
+      setDestinationLocation(result.description)
+      setDestinationCoords({ lat: result.geometry.location.lat, lng: result.geometry.location.lng })
+      console.log("✅ Lieu de destination mis à jour:", result.description)
+      // Activer automatiquement le champ départ après sélection
+      setActiveField("departure")
     } else {
       console.log("❌ Aucun champ actif détecté")
+      console.log("🔍 Fermeture du champ actif")
     }
-
-    // Fermer le champ actif mais ne pas vider immédiatement les résultats
-    console.log("🔍 Fermeture du champ actif")
-    setActiveField(null)
     
-    // Réinitialiser l'état de sélection après un délai
-    setTimeout(() => {
-      setIsSelecting(false)
-      console.log("🔍 État après mise à jour - départ:", departureLocation, "destination:", destinationLocation)
-    }, 200)
+    console.log("🔍 État après mise à jour - départ:", departureLocation, "destination:", destinationLocation)
+    
+    // Calculer l'itinéraire si les deux lieux sont définis
+    if (departureCoords && destinationCoords) {
+      await calculateRoute()
+    }
+    
+    setIsSelecting(false)
   }
 
   const handleConfirmTrip = async () => {
@@ -300,7 +311,7 @@ export default function SelectLocationsScreen() {
     setIsLoading(true)
     try {
       // Calculer l'itinéraire
-      const route = await calculateRoute(departureLocation, destinationLocation)
+      const route = await calculateRoute()
 
       if (route) {
         // Navigation vers la page d'accueil avec les paramètres
@@ -309,8 +320,8 @@ export default function SelectLocationsScreen() {
           params: {
             originName: departureLocation,
             destinationName: destinationLocation,
-            originCoords: departureCoords || "-5.0301,7.6901",
-            destinationCoords: destinationCoords || "-5.0289,7.6895",
+            originCoords: departureCoords ? `${departureCoords.lat},${departureCoords.lng}` : "-5.0301,7.6901",
+            destinationCoords: destinationCoords ? `${destinationCoords.lat},${destinationCoords.lng}` : "-5.0289,7.6895",
           },
         })
       } else {
@@ -400,7 +411,8 @@ export default function SelectLocationsScreen() {
               console.log("🎯 Blur sur champ départ, isSelecting:", isSelecting)
               // Ne pas fermer le champ s'il y a des suggestions visibles
               if (!isSelecting && searchResults.length === 0) {
-                setActiveField(null)
+                // Si on ferme le champ départ, activer automatiquement le champ destination
+                setActiveField("destination")
               }
             }}
           />
@@ -427,7 +439,8 @@ export default function SelectLocationsScreen() {
               console.log("🎯 Blur sur champ destination, isSelecting:", isSelecting)
               // Ne pas fermer le champ s'il y a des suggestions visibles
               if (!isSelecting && searchResults.length === 0) {
-                setActiveField(null)
+                // Si on ferme le champ destination, activer automatiquement le champ départ
+                setActiveField("departure")
               }
             }}
           />
