@@ -4,6 +4,9 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 
+// Import du gestionnaire de cache
+const BackendCacheManager = require('./utils/cacheManager');
+
 const authRoutes = require('./routes/auth');
 const deliveryRoutes = require('./routes/deliveries');
 const userRoutes = require('./routes/users');
@@ -57,12 +60,26 @@ app.use('*', (req, res) => {
   });
 });
 
-// Démarrage du serveur
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Serveur Yatou Delivery démarré sur le port ${PORT}`);
-  console.log(`📱 Mode: ${process.env.NODE_ENV}`);
-  console.log(`🌐 URL: http://localhost:${PORT}`);
-  console.log(`🌐 URL réseau: http://192.168.100.191:${PORT}`);
-});
+// Initialiser le cache avant de démarrer le serveur
+const startServer = async () => {
+  try {
+    // Initialiser le cache backend
+    await BackendCacheManager.init();
+    
+    // Démarrage du serveur
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Serveur Yatou Delivery démarré sur le port ${PORT}`);
+      console.log(`📱 Mode: ${process.env.NODE_ENV}`);
+      console.log(`🌐 URL: http://localhost:${PORT}`);
+      console.log(`🌐 URL réseau: http://192.168.100.191:${PORT}`);
+      console.log(`💾 Cache backend initialisé`);
+    });
+  } catch (error) {
+    console.error('❌ Erreur lors du démarrage du serveur:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 module.exports = app;

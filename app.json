@@ -36,7 +36,10 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/logos/Logo-yatou-01.png"
+      "favicon": "./assets/logos/Logo-yatou-01.png",
+      "config": {
+        "googleMapsApiKey": "AIzaSyBOwNDFwx9EerTB29GCdwyCyaaQIDgs9UI"
+      }
     },
     "plugins": [
       "expo-router", 

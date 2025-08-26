@@ -197,9 +197,7 @@ export default function SelectLocationsScreen() {
   // Fonction pour calculer l'itinéraire
   const calculateRoute = async () => {
     if (!departureCoords || !destinationCoords) {
-      console.log("❌ Coordonnées manquantes pour le calcul d'itinéraire")
-      console.log("📍 Coordonnées départ:", departureCoords)
-      console.log("📍 Coordonnées destination:", destinationCoords)
+
       return
     }
 
@@ -207,7 +205,7 @@ export default function SelectLocationsScreen() {
       const origin = `${departureCoords.lat},${departureCoords.lng}`
       const destination = `${destinationCoords.lat},${destinationCoords.lng}`
       
-      console.log("🗺️ Calcul itinéraire avec coordonnées:")
+  
       console.log("📍 Origine:", origin)
       console.log("📍 Destination:", destination)
       
@@ -256,14 +254,14 @@ export default function SelectLocationsScreen() {
     if (activeField === "departure") {
       console.log("📍 Mise à jour lieu de départ avec:", location.name)
       setDepartureLocation(location.name)
-      // Coordonnées par défaut pour les lieux prédéfinis
-      setDepartureCoords({ lat: -5.0301, lng: 7.6901 })
+      // Coordonnées par défaut pour les lieux prédéfinis - Abidjan
+      setDepartureCoords({ lat: -5.3600, lng: 4.0083 })
       // Activer automatiquement le champ destination après sélection
       setActiveField("destination")
     } else if (activeField === "destination") {
       console.log("📍 Mise à jour lieu de destination avec:", location.name)
       setDestinationLocation(location.name)
-      setDestinationCoords({ lat: -5.0289, lng: 7.6895 })
+      setDestinationCoords({ lat: -5.3200, lng: 4.0500 })
       // Activer automatiquement le champ départ après sélection
       setActiveField("departure")
     } else {
@@ -296,7 +294,7 @@ export default function SelectLocationsScreen() {
       console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
       setDepartureLocation(result.description)
       setDepartureCoords(coords)
-      console.log("✅ Lieu de départ mis à jour:", result.description, "avec coordonnées:", coords)
+      
       // Activer automatiquement le champ destination après sélection
       setActiveField("destination")
       
@@ -309,7 +307,7 @@ export default function SelectLocationsScreen() {
       console.log("🔍 État avant mise à jour - départ:", departureLocation, "destination:", destinationLocation)
       setDestinationLocation(result.description)
       setDestinationCoords(coords)
-      console.log("✅ Lieu de destination mis à jour:", result.description, "avec coordonnées:", coords)
+      
       // Activer automatiquement le champ départ après sélection
       setActiveField("departure")
       
@@ -340,15 +338,19 @@ export default function SelectLocationsScreen() {
       const route = await calculateRoute()
 
       if (route) {
-        // Navigation vers la page d'accueil avec les paramètres
-        router.push({
+        // Retourner à la page précédente avec les paramètres
+        const navigationParams = {
+          originName: departureLocation,
+          destinationName: destinationLocation,
+          originCoords: departureCoords ? `${departureCoords.lat},${departureCoords.lng}` : "7.6833,-5.0333",
+          destinationCoords: destinationCoords ? `${destinationCoords.lat},${destinationCoords.lng}` : "7.7000,-5.0500",
+        }
+        
+        console.log('🚀 Navigation vers la page précédente avec paramètres:', navigationParams)
+        
+        router.replace({
           pathname: "/(tabs)",
-          params: {
-            originName: departureLocation,
-            destinationName: destinationLocation,
-            originCoords: departureCoords ? `${departureCoords.lat},${departureCoords.lng}` : "-5.0301,7.6901",
-            destinationCoords: destinationCoords ? `${destinationCoords.lat},${destinationCoords.lng}` : "-5.0289,7.6895",
-          },
+          params: navigationParams,
         })
       } else {
         Alert.alert("Erreur", "Impossible de calculer l'itinéraire. Veuillez réessayer.")

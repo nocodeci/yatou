@@ -2,26 +2,31 @@
 
 import { useEffect, useMemo, useState, useRef } from "react"
 import { useLocalSearchParams } from "expo-router"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  StatusBar,
-  Dimensions,
-  Animated,
-  TextInput,
-} from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Dimensions, Animated } from "react-native"
 import { Plus, MapPin, Clock, Star } from "lucide-react-native"
 import { useRouter } from "expo-router"
 
 import { AppColors } from "@/app/constants/colors"
 import YatouLogo from "@/components/YatouLogo"
 import GoogleMapViewComponent from "@/components/MapView"
+import DeliveryBottomSheet from "@/components/DeliveryBottomSheet"
+import ErrandBottomSheet from "@/components/ErrandBottomSheet"
+import MovingBottomSheet from "@/components/MovingBottomSheet"
+
+
 
 export default function ImprovedHomeScreen() {
   const router = useRouter()
   const params = useLocalSearchParams()
+
+  // On destructure les paramètres pour obtenir des valeurs stables (primitives)
+  const {
+    originName,
+    destinationName,
+    originCoords: originCoordsStr, // Renommer pour éviter la confusion
+    destinationCoords: destinationCoordsStr,
+  } = params
+
   const { height } = Dimensions.get("window")
   const [selectedDestination, setSelectedDestination] = useState<[number, number] | null>(null)
   const [selectedOrigin, setSelectedOrigin] = useState<[number, number] | null>(null)
@@ -38,8 +43,10 @@ export default function ImprovedHomeScreen() {
   const [selectedDestinationName, setSelectedDestinationName] = useState<string>("")
   const [selectedOriginName, setSelectedOriginName] = useState<string>("")
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
-  const [selectedServiceType, setSelectedServiceType] = useState<"standard" | "premium">("standard")
-
+  const [selectedServiceType, setSelectedServiceType] = useState<"standard" | "express">("standard")
+  const [showDeliveryBottomSheet, setShowDeliveryBottomSheet] = useState(false)
+  const [showErrandBottomSheet, setShowErrandBottomSheet] = useState(false)
+  const [showMovingBottomSheet, setShowMovingBottomSheet] = useState(false)
 
 
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -48,8 +55,8 @@ export default function ImprovedHomeScreen() {
   const mapRef = useRef<any>(null)
 
   useEffect(() => {
-    // Simuler la position utilisateur (Bouaké)
-    setUserLocation([-5.0301, 7.6901])
+    // Position utilisateur à Bouaké
+    setUserLocation([-5.0333, 7.6833])
 
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -65,25 +72,93 @@ export default function ImprovedHomeScreen() {
     ]).start()
   }, [])
 
+  // Fonction pour normaliser les coordonnées au format [longitude, latitude]
+  const normalizeCoordinates = (coordinates: [number, number]): [number, number] => {
+    const [first, second] = coordinates
+
+    // Si le premier nombre est dans la plage de longitude et le second dans la plage de latitude
+    if (first >= -8.5 && first <= -2.0 && second >= 4.0 && second <= 11.0) {
+      return [first, second] // [longitude, latitude] - déjà correct
+    }
+
+    // Si le premier nombre est dans la plage de latitude et le second dans la plage de longitude
+    if (first >= 4.0 && first <= 11.0 && second >= -8.5 && second <= -2.0) {
+      return [second, first] // Inverser pour avoir [longitude, latitude]
+    }
+
+    // Si aucune validation ne passe, retourner tel quel
+    return coordinates
+  }
+
   // Gérer les paramètres de retour depuis la page de sélection des lieux
   useEffect(() => {
-    if (params.originName && params.destinationName && params.originCoords && params.destinationCoords) {
-      const originCoords = (params.originCoords as string).split(",").map(Number) as [number, number]
-      const destinationCoords = (params.destinationCoords as string).split(",").map(Number) as [number, number]
+    console.log("📱 Paramètres reçus:", { originName, destinationName, originCoordsStr, destinationCoordsStr })
 
-      setSelectedOrigin(originCoords)
-      setSelectedOriginName(params.originName as string)
-      setSelectedDestination(destinationCoords)
-      setSelectedDestinationName(params.destinationName as string)
-      setSearchQuery(params.destinationName as string)
+    // Le useEffect ne s'exécute que si ces valeurs changent vraiment
+    if (originName && destinationName && originCoordsStr && destinationCoordsStr) {
+      const originCoords = (originCoordsStr as string).split(",").map(Number) as [number, number]
+      const destinationCoords = (destinationCoordsStr as string).split(",").map(Number) as [number, number]
+
+      // Valider et normaliser les coordonnées avant de les utiliser
+      if (validateCoordinates(originCoords)) {
+        const normalizedOrigin = normalizeCoordinates(originCoords)
+        setSelectedOrigin(normalizedOrigin)
+        setSelectedOriginName(originName as string)
+        console.log("✅ Origine définie:", normalizedOrigin, originName)
+      } else {
+        console.error("❌ Coordonnées d'origine invalides:", originCoords)
+      }
+
+      if (validateCoordinates(destinationCoords)) {
+        const normalizedDestination = normalizeCoordinates(destinationCoords)
+        setSelectedDestination(normalizedDestination)
+        setSelectedDestinationName(destinationName as string)
+        setSearchQuery(destinationName as string)
+
+        // Activer le panneau de trajet si on vient de select-locations
+        if (originName && destinationName) {
+          console.log("Prix calculé")
+        }
+
+        console.log("✅ Destination définie:", normalizedDestination, destinationName)
+        console.log("🎯 État final - Destination:", normalizedDestination)
+      } else {
+        console.error("❌ Coordonnées de destination invalides:", destinationCoords)
+      }
     }
-  }, [params])
+  }, [originName, destinationName, originCoordsStr, destinationCoordsStr])
 
   const handleSearchBarPress = () => {
     router.push("/select-locations")
   }
 
+  const handleBookRide = () => {
+    if (selectedServiceType) {
+      alert(`Commande créée : ${selectedOriginName} → ${selectedDestinationName} (${selectedServiceType})`)
+    }
+  }
 
+  // Fonction pour valider les coordonnées
+  const validateCoordinates = (coordinates: [number, number]): boolean => {
+    if (!coordinates || coordinates.length !== 2) return false
+
+    const [first, second] = coordinates
+    if (isNaN(first) || isNaN(second)) return false
+
+    // Les coordonnées peuvent être dans deux formats :
+    // 1. [longitude, latitude] - format standard
+    // 2. [latitude, longitude] - format inversé (provenant de certaines APIs)
+
+    // Vérifier si c'est le format [longitude, latitude]
+    const isValidFormat1 = first >= -8.5 && first <= -2.0 && second >= 4.0 && second <= 11.0
+
+    // Vérifier si c'est le format [latitude, longitude] (inversé)
+    const isValidFormat2 = first >= 4.0 && first <= 11.0 && second >= -8.5 && second <= -2.0
+
+    const isValid = isValidFormat1 || isValidFormat2
+
+    return isValid
+  }
 
   // Fonction pour rechercher des adresses réelles avec Google Places API
   const performSearch = async (query: string) => {
@@ -166,19 +241,25 @@ export default function ImprovedHomeScreen() {
             id: "1",
             name: "Marché de Bouaké",
             address: "Centre-ville, Bouaké, Côte d'Ivoire",
-            coordinates: [-5.0301, 7.6901] as [number, number],
+            coordinates: [-5.0289, 7.6895] as [number, number],
           },
           {
             id: "2",
             name: "Gare Routière de Bouaké",
             address: "Avenue de la Paix, Bouaké, Côte d'Ivoire",
-            coordinates: [-5.0289, 7.6895] as [number, number],
+            coordinates: [-5.0321, 7.6923] as [number, number],
           },
           {
             id: "3",
             name: "Université Alassane Ouattara",
             address: "Route de Man, Bouaké, Côte d'Ivoire",
-            coordinates: [-5.0321, 7.6923] as [number, number],
+            coordinates: [-5.0333, 7.6833] as [number, number],
+          },
+          {
+            id: "4",
+            name: "Broukro",
+            address: "Broukro, Côte d'Ivoire",
+            coordinates: [-5.05, 7.7] as [number, number],
           },
         ]
 
@@ -206,6 +287,8 @@ export default function ImprovedHomeScreen() {
         distance: 0,
         standardPrice: 0,
         premiumPrice: 0,
+        duration: 0,
+        basePrice: 0,
       }
     }
 
@@ -228,11 +311,14 @@ export default function ImprovedHomeScreen() {
 
     const standardPrice = Math.round(basePrice + distance * pricePerKm)
     const premiumPrice = Math.round(standardPrice * 1.5) // 50% plus cher pour le premium
+    const duration = (Math.round(distance * 10) / 10) * 2 // Estimation basique de la durée en minutes
 
     return {
       distance: Math.round(distance * 10) / 10, // Arrondir à 1 décimale
       standardPrice,
       premiumPrice,
+      duration,
+      basePrice,
     }
   }, [selectedDestination, selectedOrigin, userLocation])
 
@@ -242,21 +328,30 @@ export default function ImprovedHomeScreen() {
         id: "standard",
         name: "Standard",
         price: calculatePricing.standardPrice,
-        time: "10-15",
+        time: "15-20",
         icon: "🏍️",
-        description: "Service rapide et économique",
+        description: "Livraison standard",
+        type: "Standard",
+        details: "Livraison standard avec un temps d'attente de 15 à 20 minutes.",
       },
       {
-        id: "premium",
-        name: "Premium",
+        id: "express",
+        name: "Express",
         price: calculatePricing.premiumPrice,
-        time: "15-25",
-        icon: "🚗",
-        description: "Confort et service haut de gamme",
+        time: "5-10",
+        icon: "⚡",
+        description: "Livraison express",
+        type: "Express",
+        details: "Livraison express avec un temps d'attente de 5 à 10 minutes.",
       },
     ],
     [calculatePricing],
   )
+
+  console.log("📱 Index - selectedOrigin:", selectedOrigin)
+  console.log("📱 Index - selectedDestination:", selectedDestination)
+
+
 
   return (
     <View style={styles.container}>
@@ -269,43 +364,41 @@ export default function ImprovedHomeScreen() {
           selectedDestination={selectedDestination}
           selectedOrigin={selectedOrigin}
           userLocation={userLocation}
-          onMapPress={(coordinates) => {
-            console.log("Carte cliquée aux coordonnées:", coordinates)
-          }}
+          onMapPress={(coordinates) => {}}
         />
 
         <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
-        <View style={styles.topBarContent}>
-          <View style={styles.topBarLeft}>
-            <YatouLogo size="large" showText={false} variant="01" style={styles.topBarLogo} />
+          <View style={styles.topBarContent}>
+            <View style={styles.topBarLeft}>
+              <YatouLogo size="large" showText={false} variant="01" style={styles.topBarLogo} />
               <View style={styles.locationIndicator}>
                 <MapPin size={16} color="#10B981" />
                 <Text style={styles.locationText}>Bouaké</Text>
                 <View style={styles.onlineIndicator} />
               </View>
-          </View>
+            </View>
 
-          <View style={styles.topBarRight}>
+            <View style={styles.topBarRight}>
               <TouchableOpacity style={styles.notificationButton} activeOpacity={0.7}>
                 <Text style={styles.notificationIcon}>🔔</Text>
                 <View style={styles.notificationBadge}>
                   <Text style={styles.notificationBadgeText}>2</Text>
-              </View>
-            </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuContainer}
-              onPress={() => router.push("/(tabs)/profile")}
-              activeOpacity={0.7}
-            >
-              <View style={styles.menuIcon}>
-                <View style={styles.menuLine} />
-                <View style={styles.menuLine} />
-                <View style={styles.menuLine} />
-              </View>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuContainer}
+                onPress={() => router.push("/(tabs)/profile")}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuIcon}>
+                  <View style={styles.menuLine} />
+                  <View style={styles.menuLine} />
+                  <View style={styles.menuLine} />
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
         </Animated.View>
 
         <Animated.View
@@ -351,167 +444,160 @@ export default function ImprovedHomeScreen() {
           <View style={styles.locationPulse} />
         </TouchableOpacity>
 
-        {selectedOrigin && selectedDestination ? (
-          <TouchableOpacity
-            style={[styles.floatingButton, styles.confirmButton]}
-            onPress={() => {
-              alert(`Livraison créée de ${selectedOriginName} vers ${selectedDestinationName}`)
-              setSelectedOrigin(null)
-              setSelectedDestination(null)
-              setSelectedOriginName("")
-              setSelectedDestinationName("")
-              setSearchQuery("")
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.confirmButtonText}>✓</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.floatingButton}
-            onPress={() => router.push("/new-delivery")}
-            activeOpacity={0.8}
-          >
-            <Plus size={24} color={AppColors.white} />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.floatingButton}
+          onPress={() => setShowServiceBottomSheet(true)}
+          activeOpacity={0.8}
+        >
+          <Plus size={24} color={AppColors.white} />
+        </TouchableOpacity>
       </View>
 
+              <Animated.View
+          style={[
+            styles.bottomPanel,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <View style={styles.dragHandle}>
+            <View style={styles.dragIndicator} />
+          </View>
 
-
-      <Animated.View
-        style={[
-          styles.bottomPanel,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
-        {selectedOrigin && selectedDestination ? (
-          <>
-            <View style={styles.tripSection}>
-              <View style={styles.tripHeader}>
-                <Text style={styles.tripTitle}>Votre trajet</Text>
-                <View style={styles.distanceChip}>
-                  <Text style={styles.distanceText}>{calculatePricing.distance} km</Text>
-                  <Clock size={12} color="#6B7280" />
-        </View>
-              </View>
-
-              <View style={styles.tripRoute}>
-                <View style={styles.routePoint}>
-                  <View style={[styles.routeDot, styles.routeDotStart]} />
-                  <View style={styles.routeInfo}>
-                    <Text style={styles.routeLabel}>Départ</Text>
-                    <Text style={styles.routeText}>{selectedOriginName || "Ma position"}</Text>
-                  </View>
-        </View>
-
-                <View style={styles.routeLine} />
-
-                <View style={styles.routePoint}>
-                  <View style={[styles.routeDot, styles.routeDotEnd]} />
-                  <View style={styles.routeInfo}>
-                    <Text style={styles.routeLabel}>Arrivée</Text>
-                    <Text style={styles.routeText}>{selectedDestinationName}</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.serviceSection}>
-              <Text style={styles.serviceTitle}>Choisir votre service</Text>
-              <View style={styles.serviceOptions}>
-                {pricingOptions.map((option) => (
-            <TouchableOpacity
-                    key={option.id}
-                    style={[styles.serviceOption, selectedServiceType === option.id && styles.serviceOptionSelected]}
-                    onPress={() => setSelectedServiceType(option.id as "standard" | "premium")}
-                    activeOpacity={0.8}
+            {selectedOrigin && selectedDestination ? (
+              // Panneau des services après sélection des lieux
+              <View style={styles.servicesPanel}>
+                <Text style={styles.servicesTitle}>🚚 Services Disponibles</Text>
+                <Text style={styles.servicesSubtitle}>Choisissez votre service YATOU</Text>
+                
+                <View style={styles.servicesGrid}>
+                  <TouchableOpacity 
+                    style={styles.serviceCard}
+                    onPress={() => setShowDeliveryBottomSheet(true)}
+                    activeOpacity={0.7}
                   >
-                    <View style={styles.serviceHeader}>
-                      <Text style={styles.serviceIcon}>{option.icon}</Text>
-                      <View style={styles.serviceInfo}>
-                        <Text
-                          style={[styles.serviceName, selectedServiceType === option.id && styles.serviceNameSelected]}
-                        >
-                          {option.name}
-                        </Text>
-                        <Text style={styles.serviceDescription}>{option.description}</Text>
-                      </View>
-                      {selectedServiceType === option.id && (
-                        <View style={styles.selectedIndicator}>
-                          <Text style={styles.selectedIndicatorText}>✓</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <View style={styles.serviceDetails}>
-                      <View style={styles.serviceTime}>
-                        <Clock size={14} color="#6B7280" />
-                        <Text style={styles.serviceTimeText}>{option.time} min</Text>
-                      </View>
-                      <Text
-                        style={[styles.servicePrice, selectedServiceType === option.id && styles.servicePriceSelected]}
-                      >
-                        {option.price.toLocaleString()} ₣
-                      </Text>
+                    <Text style={styles.serviceCardIcon}>📦</Text>
+                    <Text style={styles.serviceCardTitle}>Livraison</Text>
+                    <Text style={styles.serviceCardSubtitle}>Colis et marchandises</Text>
+                    <View style={styles.serviceCardArrow}>
+                      <Text style={styles.serviceCardArrowText}>→</Text>
                     </View>
                   </TouchableOpacity>
-                ))}
+
+                  <TouchableOpacity 
+                    style={styles.serviceCard}
+                    onPress={() => setShowErrandBottomSheet(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.serviceCardIcon}>🛒</Text>
+                    <Text style={styles.serviceCardTitle}>Course</Text>
+                    <Text style={styles.serviceCardSubtitle}>Achats et commissions</Text>
+                    <View style={styles.serviceCardArrow}>
+                      <Text style={styles.serviceCardArrowText}>→</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.serviceCard}
+                    onPress={() => setShowMovingBottomSheet(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.serviceCardIcon}>🏠</Text>
+                    <Text style={styles.serviceCardTitle}>Déménagement</Text>
+                    <Text style={styles.serviceCardSubtitle}>Transport et déménagement</Text>
+                    <View style={styles.serviceCardArrow}>
+                      <Text style={styles.serviceCardArrowText}>→</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+
               </View>
-            </View>
+            ) : (
+              // Panneau par défaut avant sélection des lieux
+              <View style={styles.quickStats}>
+                <Text style={styles.quickStatsTitle}>Yatou à votre service</Text>
+                <Text style={styles.quickStatsSubtitle}>Service de transport rapide et fiable</Text>
 
-            <View style={styles.confirmSection}>
-              <TouchableOpacity style={styles.confirmButton} activeOpacity={0.8}>
-                <View style={styles.confirmButtonContent}>
-                  <Text style={styles.confirmButtonText}>Commander maintenant</Text>
-                  <Text style={styles.confirmButtonPrice}>
-                    {pricingOptions.find((opt) => opt.id === selectedServiceType)?.price.toLocaleString()} ₣
-                  </Text>
-                </View>
-            </TouchableOpacity>
-          </View>
-          </>
-        ) : (
-          <View style={styles.quickStats}>
-            <Text style={styles.quickStatsTitle}>Yatou à votre service</Text>
-            <Text style={styles.quickStatsSubtitle}>Service de transport rapide et fiable</Text>
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <View style={styles.statIcon}>
+                      <Clock size={20} color="#10B981" />
+                    </View>
+                    <Text style={styles.statNumber}>2 min</Text>
+                    <Text style={styles.statLabel}>Temps d'attente</Text>
+                  </View>
 
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <View style={styles.statIcon}>
-                  <Clock size={20} color="#10B981" />
+                  <View style={styles.statDivider} />
+
+                  <View style={styles.statItem}>
+                    <View style={styles.statIcon}>
+                      <Star size={20} color="#F59E0B" />
+                    </View>
+                    <Text style={styles.statNumber}>4.8★</Text>
+                    <Text style={styles.statLabel}>Note moyenne</Text>
+                  </View>
+
+                  <View style={styles.statDivider} />
+
+                  <View style={styles.statItem}>
+                    <View style={styles.statIcon}>
+                      <Text style={styles.statIconText}>🏍️</Text>
+                    </View>
+                    <Text style={styles.statNumber}>150+</Text>
+                    <Text style={styles.statLabel}>Chauffeurs actifs</Text>
+                  </View>
                 </View>
-                <Text style={styles.statNumber}>2 min</Text>
-                <Text style={styles.statLabel}>Temps d'attente</Text>
               </View>
+            )}
+        </Animated.View>
 
-              <View style={styles.statDivider} />
+        {/* Bottom Sheets Individuels pour Chaque Service */}
+        <DeliveryBottomSheet
+          visible={showDeliveryBottomSheet}
+          onClose={() => setShowDeliveryBottomSheet(false)}
+          tripData={{
+            distance: calculatePricing.distance,
+            duration: calculatePricing.duration
+          }}
+          onServiceSelected={(service, vehicle, price) => {
+            console.log(`Service sélectionné: ${service} avec ${vehicle} - Prix: ${price} FCFA`);
+            alert(`Commande créée : ${service} avec ${vehicle} - Prix: ${price.toLocaleString()} FCFA`);
+            setShowDeliveryBottomSheet(false);
+          }}
+        />
 
-              <View style={styles.statItem}>
-                <View style={styles.statIcon}>
-                  <Star size={20} color="#F59E0B" />
-                </View>
-                <Text style={styles.statNumber}>4.8★</Text>
-                <Text style={styles.statLabel}>Note moyenne</Text>
-        </View>
+        <ErrandBottomSheet
+          visible={showErrandBottomSheet}
+          onClose={() => setShowErrandBottomSheet(false)}
+          tripData={{
+            distance: calculatePricing.distance,
+            duration: calculatePricing.duration
+          }}
+          onServiceSelected={(service, vehicle, price) => {
+            console.log(`Service sélectionné: ${service} avec ${vehicle} - Prix: ${price} FCFA`);
+            alert(`Commande créée : ${service} avec ${vehicle} - Prix: ${price.toLocaleString()} FCFA`);
+            setShowErrandBottomSheet(false);
+          }}
+        />
 
-              <View style={styles.statDivider} />
+        <MovingBottomSheet
+          visible={showMovingBottomSheet}
+          onClose={() => setShowMovingBottomSheet(false)}
+          tripData={{
+            distance: calculatePricing.distance,
+            duration: calculatePricing.duration
+          }}
+          onServiceSelected={(service, vehicle, price) => {
+            console.log(`Service sélectionné: ${service} avec ${vehicle} - Prix: ${price} FCFA`);
+            alert(`Commande créée : ${service} avec ${vehicle} - Prix: ${price.toLocaleString()} FCFA`);
+            setShowMovingBottomSheet(false);
+          }}
+        />
 
-              <View style={styles.statItem}>
-                <View style={styles.statIcon}>
-                  <Text style={styles.statIconText}>🏍️</Text>
-                </View>
-                <Text style={styles.statNumber}>150+</Text>
-                <Text style={styles.statLabel}>Chauffeurs actifs</Text>
-              </View>
-            </View>
-            </View>
-          )}
-      </Animated.View>
-        </View>
+    </View>
   )
 }
 
@@ -735,7 +821,7 @@ const styles = StyleSheet.create({
 
   floatingButton: {
     position: "absolute",
-    bottom: 140,
+    bottom: 220,
     right: 16,
     width: 56,
     height: 56,
@@ -756,212 +842,94 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: AppColors.white,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 15,
-    maxHeight: 450,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 12,
+    minHeight: 200,
+    maxHeight: 400,
   },
 
-  tripSection: {
-    marginBottom: 24,
-  },
-  tripHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  tripTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: AppColors.text,
-  },
-  distanceChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F1F5F9",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    gap: 6,
-  },
-  distanceText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: AppColors.text,
-  },
-  tripRoute: {
-    gap: 16,
-  },
-  routePoint: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 16,
-  },
-  routeDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginTop: 2,
-  },
-  routeDotStart: {
-    backgroundColor: "#10B981",
-  },
-  routeDotEnd: {
-    backgroundColor: "#EF4444",
-  },
-  routeInfo: {
-    flex: 1,
-  },
-  routeLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  routeLine: {
-    width: 2,
-    height: 24,
-    backgroundColor: "#E5E7EB",
-    marginLeft: 7,
-  },
-  routeText: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: AppColors.text,
-    lineHeight: 22,
-  },
 
-  serviceSection: {
-    marginBottom: 24,
-  },
-  serviceTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: AppColors.text,
-    marginBottom: 16,
-  },
-  serviceOptions: {
-    gap: 12,
-  },
-  serviceOption: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-  },
-  serviceOptionSelected: {
-    borderColor: AppColors.primary,
-    backgroundColor: "#F0F9FF",
-  },
+
+
+
   serviceHeader: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   serviceIcon: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: 20,
+    marginBottom: 6,
   },
   serviceInfo: {
-    flex: 1,
+    alignItems: "center",
   },
   serviceName: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: "700",
     color: AppColors.text,
-    marginBottom: 2,
+    marginBottom: 3,
+    textAlign: "center",
   },
   serviceNameSelected: {
     color: AppColors.primary,
   },
   serviceDescription: {
-    fontSize: 13,
+    fontSize: 11,
     color: "#6B7280",
+    textAlign: "center",
   },
   selectedIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: AppColors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   selectedIndicatorText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#FFFFFF",
     fontWeight: "700",
   },
   serviceDetails: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 6,
   },
   serviceTime: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
+    justifyContent: "center",
   },
   serviceTimeText: {
-    fontSize: 14,
+    fontSize: 10,
     color: "#6B7280",
     fontWeight: "500",
   },
   servicePrice: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: "700",
     color: AppColors.text,
+    textAlign: "center",
   },
   servicePriceSelected: {
     color: AppColors.primary,
   },
 
-  confirmSection: {
-    alignItems: "center",
-  },
-  confirmButton: {
-    backgroundColor: AppColors.primary,
-    borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 32,
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: AppColors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  confirmButtonDisabled: {
-    backgroundColor: "#D1D5DB",
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  confirmButtonContent: {
-    alignItems: "center",
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: AppColors.white,
-    marginBottom: 2,
-  },
-  confirmButtonPrice: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: AppColors.white,
-  },
+
 
   quickStats: {
     paddingVertical: 20,
@@ -1021,128 +989,96 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
 
-  // Bottom Sheet Styles
-  bottomSheetOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 2000,
+  dragHandle: {
+    alignItems: "center",
+    paddingVertical: 8,
+    marginBottom: 8,
   },
-  overlayTouchable: {
-    flex: 1,
-  },
-  bottomSheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxHeight: "80%",
-    zIndex: 2001,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 20,
-  },
-  bottomSheetHandle: {
+  dragIndicator: {
     width: 40,
     height: 4,
     backgroundColor: "#E5E7EB",
     borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 20,
   },
-  bottomSheetHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  bottomSheetTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#1F2937",
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#F3F4F6",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: "#6B7280",
-  },
-  bottomSheetContent: {
+
+  scrollContent: {
     flex: 1,
+    paddingBottom: 16,
   },
-  inputContainer: {
-    marginBottom: 24,
-  },
-  inputWrapper: {
-    flexDirection: "row",
+
+  // Styles pour le panneau des services
+  servicesPanel: {
+    paddingVertical: 20,
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+  },
+  servicesTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: AppColors.text,
+    textAlign: "center",
     marginBottom: 8,
   },
-  inputIcon: {
-    marginRight: 12,
-    width: 20,
-    alignItems: "center",
-  },
-  pickupDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#10B981",
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#1F2937",
-  },
-  quickActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  servicesSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
     marginBottom: 24,
   },
-  quickActionButton: {
+  servicesGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 20,
+    gap: 12,
+  },
+  serviceCard: {
     flex: 1,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    padding: 16,
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    minHeight: 100,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  quickActionIcon: {
-    fontSize: 20,
-    marginBottom: 4,
+  serviceCardIcon: {
+    fontSize: 24,
+    marginBottom: 12,
   },
-  quickActionText: {
+  serviceCardTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: AppColors.text,
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  serviceCardSubtitle: {
     fontSize: 12,
     color: "#6B7280",
-    fontWeight: "500",
+    textAlign: "center",
+    lineHeight: 16,
   },
-  modalRouteLine: {
-    width: 2,
+  serviceCardArrow: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    width: 20,
     height: 20,
-    backgroundColor: "#E5E7EB",
-    marginLeft: 9,
-    marginVertical: 4,
+    borderRadius: 10,
+    backgroundColor: AppColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  serviceCardArrowText: {
+    fontSize: 14,
+    color: AppColors.white,
+    fontWeight: 'bold',
+  },
+
+
 })

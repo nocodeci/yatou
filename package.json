@@ -6,12 +6,19 @@
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
     "build:web": "expo export --platform web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "optimize:images": "node scripts/optimize-images.js",
+    "optimize:all": "node scripts/run-optimizations.js",
+    "cache:stats": "curl http://localhost:3000/api/directions/cache/stats",
+    "cache:clear": "curl -X POST http://localhost:3000/api/directions/cache/clear"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.1",
     "@expo/vector-icons": "^14.1.0",
+
     "@lucide/lab": "^0.1.2",
+    "@mapbox/polyline": "^1.2.1",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "8.4.1",
     "@react-native-community/geolocation": "^3.4.0",
     "@react-navigation/bottom-tabs": "^7.2.0",
@@ -35,17 +42,16 @@
     "expo-web-browser": "~14.1.5",
     "lucide-react-native": "^0.475.0",
     "nativewind": "^4.1.23",
-    "react": "^19.0.0",
+    "react": "19.0.0",
     "react-dom": "19.0.0",
-    "react-native": "^0.79.1",
+    "react-native": "0.79.1",
     "react-native-dotenv": "^3.4.11",
-    "react-native-mapbox-gl": "^5.2.1-deprecated",
     "react-native-maps": "1.20.1",
     "react-native-modalize": "^2.0.8",
-    "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.3.0",
     "react-native-screens": "~4.10.0",
-    "react-native-svg": "15.11.2",
+    "react-native-svg": "^15.11.2",
+    "react-native-svg-transformer": "^1.5.1",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
@@ -54,6 +60,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@types/mapbox__polyline": "^1.0.5",
     "@types/react": "~19.0.10",
     "@types/react-native": "^0.72.8",
     "typescript": "~5.8.3"

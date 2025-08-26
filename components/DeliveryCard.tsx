@@ -9,7 +9,7 @@ interface DeliveryCardProps {
   onPress?: () => void
 }
 
-export default function DeliveryCard({ delivery, onPress }: DeliveryCardProps) {
+const DeliveryCard = React.memo(({ delivery, onPress }: DeliveryCardProps) => {
   const statusDot = getStatusDotColor(delivery.status)
   const quantity = getQuantity(delivery.package)
   const hasImage = Boolean((delivery.package as any).photoUri)
@@ -78,7 +78,9 @@ export default function DeliveryCard({ delivery, onPress }: DeliveryCardProps) {
       </View>
     </TouchableOpacity>
   )
-}
+})
+
+export default DeliveryCard
 
 /* Utils */
 
