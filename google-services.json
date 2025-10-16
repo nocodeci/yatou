@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "147097138277",
+    "project_id": "coaching-63f64",
+    "storage_bucket": "coaching-63f64.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:147097138277:android:260dee67d829f706c6c28c",
+        "android_client_info": {
+          "package_name": "com.mycompany.coaching"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZwE1_QOKPDpmJltiALe4p3OroAAI6hRY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:147097138277:android:82ce691aa4fcdf4cc6c28c",
+        "android_client_info": {
+          "package_name": "com.yohan.yatou"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZwE1_QOKPDpmJltiALe4p3OroAAI6hRY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

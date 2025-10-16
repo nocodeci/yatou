@@ -130,7 +130,7 @@ export default function SelectLocationsScreen() {
   const [isSelecting, setIsSelecting] = useState(false) // Nouvel état pour éviter les conflits
 
   // URL du backend
-  const BACKEND_URL = "http://192.168.100.196:3000"
+  const BACKEND_URL = "http://192.168.100.219:3001"
 
   // Log de l'état actuel
   console.log("🔄 État actuel:", {

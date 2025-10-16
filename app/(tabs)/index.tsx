@@ -2,16 +2,20 @@
 
 import { useEffect, useMemo, useState, useRef } from "react"
 import { useLocalSearchParams } from "expo-router"
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Dimensions, Animated } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Dimensions, Animated, Alert } from "react-native"
 import { Plus, MapPin, Clock, Star } from "lucide-react-native"
 import { useRouter } from "expo-router"
 
 import { AppColors } from "@/app/constants/colors"
 import YatouLogo from "@/components/YatouLogo"
-import GoogleMapViewComponent from "@/components/MapView"
+import GoogleMapViewComponent from "@/components/MapViewSimple"
 import DeliveryBottomSheet from "@/components/DeliveryBottomSheet"
 import ErrandBottomSheet from "@/components/ErrandBottomSheet"
 import MovingBottomSheet from "@/components/MovingBottomSheet"
+// import YatouPricingSystem from "@/components/YatouPricingSystem" // Plus utilisé
+import YatouVehicleSelector from "@/components/YatouVehicleSelector"
+import DriverMarkers from "@/components/DriverMarkers"
+import DriverSearchModal from "@/components/DriverSearchModal"
 
 
 
@@ -47,6 +51,10 @@ export default function ImprovedHomeScreen() {
   const [showDeliveryBottomSheet, setShowDeliveryBottomSheet] = useState(false)
   const [showErrandBottomSheet, setShowErrandBottomSheet] = useState(false)
   const [showMovingBottomSheet, setShowMovingBottomSheet] = useState(false)
+  // const [showPricingSystem, setShowPricingSystem] = useState(false) // Plus utilisé
+  const [selectedVehicle, setSelectedVehicle] = useState<'moto' | 'fourgon' | 'camion' | null>(null)
+  const [showDriverSearch, setShowDriverSearch] = useState(false)
+  const [selectedVehiclePricing, setSelectedVehiclePricing] = useState<any>(null)
 
 
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -234,42 +242,8 @@ export default function ImprovedHomeScreen() {
         console.log("Résultats trouvés:", validResults.length)
         setSearchResults(validResults)
       } else {
-        console.log("Aucune prédiction trouvée, utilisation des résultats simulés")
-        // Fallback vers les résultats simulés si l'API échoue
-        const mockResults = [
-          {
-            id: "1",
-            name: "Marché de Bouaké",
-            address: "Centre-ville, Bouaké, Côte d'Ivoire",
-            coordinates: [-5.0289, 7.6895] as [number, number],
-          },
-          {
-            id: "2",
-            name: "Gare Routière de Bouaké",
-            address: "Avenue de la Paix, Bouaké, Côte d'Ivoire",
-            coordinates: [-5.0321, 7.6923] as [number, number],
-          },
-          {
-            id: "3",
-            name: "Université Alassane Ouattara",
-            address: "Route de Man, Bouaké, Côte d'Ivoire",
-            coordinates: [-5.0333, 7.6833] as [number, number],
-          },
-          {
-            id: "4",
-            name: "Broukro",
-            address: "Broukro, Côte d'Ivoire",
-            coordinates: [-5.05, 7.7] as [number, number],
-          },
-        ]
-
-        const filteredResults = mockResults.filter(
-          (result) =>
-            result.name.toLowerCase().includes(query.toLowerCase()) ||
-            result.address.toLowerCase().includes(query.toLowerCase()),
-        )
-
-        setSearchResults(filteredResults)
+        console.log("Aucune prédiction trouvée")
+        setSearchResults([])
       }
     } catch (error) {
       console.error("Erreur lors de la recherche:", error)
@@ -365,7 +339,20 @@ export default function ImprovedHomeScreen() {
           selectedOrigin={selectedOrigin}
           userLocation={userLocation}
           onMapPress={(coordinates) => {}}
-        />
+        >
+          {/* Marqueurs des livreurs disponibles */}
+          {userLocation && (
+            <DriverMarkers
+              centerLat={userLocation[1]}
+              centerLng={userLocation[0]}
+              radiusKm={15}
+              onDriverPress={(driver) => {
+                console.log('Livreur sélectionné:', driver);
+                // Ici vous pouvez ajouter une logique pour afficher les détails du livreur
+              }}
+            />
+          )}
+        </GoogleMapViewComponent>
 
         <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
           <View style={styles.topBarContent}>
@@ -446,113 +433,13 @@ export default function ImprovedHomeScreen() {
 
         <TouchableOpacity
           style={styles.floatingButton}
-          onPress={() => setShowServiceBottomSheet(true)}
+          onPress={() => router.push('/select-locations')}
           activeOpacity={0.8}
         >
           <Plus size={24} color={AppColors.white} />
         </TouchableOpacity>
       </View>
 
-              <Animated.View
-          style={[
-            styles.bottomPanel,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <View style={styles.dragHandle}>
-            <View style={styles.dragIndicator} />
-          </View>
-
-            {selectedOrigin && selectedDestination ? (
-              // Panneau des services après sélection des lieux
-              <View style={styles.servicesPanel}>
-                <Text style={styles.servicesTitle}>🚚 Services Disponibles</Text>
-                <Text style={styles.servicesSubtitle}>Choisissez votre service YATOU</Text>
-                
-                <View style={styles.servicesGrid}>
-                  <TouchableOpacity 
-                    style={styles.serviceCard}
-                    onPress={() => setShowDeliveryBottomSheet(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.serviceCardIcon}>📦</Text>
-                    <Text style={styles.serviceCardTitle}>Livraison</Text>
-                    <Text style={styles.serviceCardSubtitle}>Colis et marchandises</Text>
-                    <View style={styles.serviceCardArrow}>
-                      <Text style={styles.serviceCardArrowText}>→</Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.serviceCard}
-                    onPress={() => setShowErrandBottomSheet(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.serviceCardIcon}>🛒</Text>
-                    <Text style={styles.serviceCardTitle}>Course</Text>
-                    <Text style={styles.serviceCardSubtitle}>Achats et commissions</Text>
-                    <View style={styles.serviceCardArrow}>
-                      <Text style={styles.serviceCardArrowText}>→</Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.serviceCard}
-                    onPress={() => setShowMovingBottomSheet(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.serviceCardIcon}>🏠</Text>
-                    <Text style={styles.serviceCardTitle}>Déménagement</Text>
-                    <Text style={styles.serviceCardSubtitle}>Transport et déménagement</Text>
-                    <View style={styles.serviceCardArrow}>
-                      <Text style={styles.serviceCardArrowText}>→</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-
-
-              </View>
-            ) : (
-              // Panneau par défaut avant sélection des lieux
-              <View style={styles.quickStats}>
-                <Text style={styles.quickStatsTitle}>Yatou à votre service</Text>
-                <Text style={styles.quickStatsSubtitle}>Service de transport rapide et fiable</Text>
-
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <View style={styles.statIcon}>
-                      <Clock size={20} color="#10B981" />
-                    </View>
-                    <Text style={styles.statNumber}>2 min</Text>
-                    <Text style={styles.statLabel}>Temps d'attente</Text>
-                  </View>
-
-                  <View style={styles.statDivider} />
-
-                  <View style={styles.statItem}>
-                    <View style={styles.statIcon}>
-                      <Star size={20} color="#F59E0B" />
-                    </View>
-                    <Text style={styles.statNumber}>4.8★</Text>
-                    <Text style={styles.statLabel}>Note moyenne</Text>
-                  </View>
-
-                  <View style={styles.statDivider} />
-
-                  <View style={styles.statItem}>
-                    <View style={styles.statIcon}>
-                      <Text style={styles.statIconText}>🏍️</Text>
-                    </View>
-                    <Text style={styles.statNumber}>150+</Text>
-                    <Text style={styles.statLabel}>Chauffeurs actifs</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-        </Animated.View>
 
         {/* Bottom Sheets Individuels pour Chaque Service */}
         <DeliveryBottomSheet
@@ -595,6 +482,54 @@ export default function ImprovedHomeScreen() {
             alert(`Commande créée : ${service} avec ${vehicle} - Prix: ${price.toLocaleString()} FCFA`);
             setShowMovingBottomSheet(false);
           }}
+        />
+
+        {/* Système de tarification YATOU complet */}
+        {/* YatouPricingSystem supprimé - on utilise maintenant les options de service directement */}
+
+        {/* Overlay YatouVehicleSelector sur la carte */}
+        {selectedOrigin && selectedDestination && (
+          <View style={styles.vehicleSelectorOverlay}>
+          <YatouVehicleSelector
+            distance={calculatePricing.distance}
+            onVehicleSelected={(vehicleType, pricing) => {
+              setSelectedVehicle(vehicleType);
+              setSelectedVehiclePricing(pricing);
+              // Le prix inclut maintenant automatiquement les options de service
+              console.log(`Véhicule sélectionné: ${vehicleType}, Prix final: ${pricing.totalPrice} FCFA`);
+            }}
+            onOrderRequest={(vehicleType, pricing) => {
+              setSelectedVehicle(vehicleType);
+              setSelectedVehiclePricing(pricing);
+              setShowDriverSearch(true);
+              console.log(`Commande demandée pour: ${vehicleType}, Prix: ${pricing.totalPrice} FCFA`);
+            }}
+            selectedVehicle={selectedVehicle}
+            showDetails={false}
+          />
+          </View>
+        )}
+
+        {/* Modal de recherche automatique de livreurs */}
+        <DriverSearchModal
+          visible={showDriverSearch}
+          onClose={() => setShowDriverSearch(false)}
+          onDriverAccepted={(driver) => {
+            console.log('Livreur accepté:', driver);
+            // Ici vous pouvez ajouter la logique pour créer la commande
+            setShowDriverSearch(false);
+            // Rediriger vers l'écran de suivi de commande ou afficher un message de confirmation
+            Alert.alert(
+              'Commande confirmée !',
+              `${driver.name} a accepté votre commande. Il arrivera bientôt !`,
+              [{ text: 'OK' }]
+            );
+          }}
+          userLocation={userLocation}
+          vehicleType={selectedVehicle || 'moto'}
+          estimatedPrice={selectedVehiclePricing?.totalPrice || 0}
+          pickupAddress={selectedOriginName || 'Adresse de départ'}
+          deliveryAddress={selectedDestinationName || 'Adresse de destination'}
         />
 
     </View>
@@ -836,25 +771,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  bottomPanel: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: AppColors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 12,
-    minHeight: 200,
-    maxHeight: 400,
-  },
 
 
 
@@ -931,102 +847,15 @@ const styles = StyleSheet.create({
 
 
 
-  quickStats: {
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-  quickStatsTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: AppColors.text,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  quickStatsSubtitle: {
-    fontSize: 14,
-    color: "#6B7280",
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-  },
-  statItem: {
-    alignItems: "center",
-    flex: 1,
-  },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F8FAFC",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  statIconText: {
-    fontSize: 20,
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: AppColors.primary,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    textAlign: "center",
-    fontWeight: "500",
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: "#E5E7EB",
-    marginHorizontal: 20,
-  },
-
-  dragHandle: {
-    alignItems: "center",
-    paddingVertical: 8,
-    marginBottom: 8,
-  },
-  dragIndicator: {
-    width: 40,
-    height: 4,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 2,
-  },
 
   scrollContent: {
     flex: 1,
     paddingBottom: 16,
   },
 
-  // Styles pour le panneau des services
-  servicesPanel: {
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-  servicesTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: AppColors.text,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  servicesSubtitle: {
-    fontSize: 14,
-    color: "#6B7280",
-    textAlign: "center",
-    marginBottom: 24,
-  },
   servicesGrid: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     width: "100%",
     marginBottom: 20,
     gap: 12,
@@ -1045,6 +874,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  serviceCardMain: {
+    maxWidth: 280,
+    backgroundColor: "#F0F9FF",
+    borderColor: AppColors.primary,
+    borderWidth: 2,
+    shadowColor: AppColors.primary,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   serviceCardIcon: {
     fontSize: 24,
@@ -1080,5 +919,47 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
+
+  // Styles pour le système de tarification
+  pricingSystemModal: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
+    zIndex: 2000,
+  },
+  closePricingButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2001,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  closePricingButtonText: {
+    fontSize: 18,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+
+  // Overlay pour le sélecteur de véhicules
+  vehicleSelectorOverlay: {
+    position: 'absolute',
+    bottom: 0, // Position en bas de l'écran
+    left: 0,
+    right: 0,
+    zIndex: 1500, // Au-dessus de la carte mais en dessous des modals
+  },
 
 })

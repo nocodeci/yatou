@@ -1,14 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, Dimensions, Text, TouchableOpacity, Animated } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
 import CacheManager from '../utils/cacheManager';
 import { useDebounce } from '../hooks/useDebounce';
-import CustomRoute from './CustomRoute';
-import RouteStyleConfig, { RouteStyle, PREDEFINED_ROUTE_STYLES } from './RouteStyleConfig';
-import ColorPicker from './ColorPicker';
-import TestRoute from './TestRoute';
-import TripDetailsBottomSheet from './TripDetailsBottomSheet';
 import { AppColors } from '@/app/constants/colors';
 
 
@@ -146,22 +142,6 @@ export default function GoogleMapViewComponent({
   const mapRef = useRef<MapView>(null);
   const [currentUserLocation, setCurrentUserLocation] = useState<[number, number] | null>(null);
   const [locationPermission, setLocationPermission] = useState(false);
-  const [routeCoordinates, setRouteCoordinates] = useState<any[]>([]);
-  const [routeStyle, setRouteStyle] = useState<RouteStyle>(PREDEFINED_ROUTE_STYLES[0]);
-  const [showRouteConfig, setShowRouteConfig] = useState(false);
-  const [customRouteColor, setCustomRouteColor] = useState('#FF0000');
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showTripDetails, setShowTripDetails] = useState(false);
-  const [tripData, setTripData] = useState({
-    origin: '',
-    destination: '',
-    distance: '',
-    duration: '',
-    estimatedPrice: '',
-    routeType: 'driving' as const,
-    trafficLevel: 'medium' as 'low' | 'medium' | 'high',
-    eta: '',
-  });
 
 
 
@@ -179,13 +159,12 @@ export default function GoogleMapViewComponent({
     });
   }, [showUserLocation]);
 
+  // Centrer la carte quand origine et destination sont sélectionnés
   useEffect(() => {
-    console.log('🔄 useEffect itinéraire - selectedOrigin:', selectedOrigin, 'selectedDestination:', selectedDestination, 'mapRef.current:', !!mapRef.current);
+    console.log('🔄 useEffect centrage - selectedOrigin:', selectedOrigin, 'selectedDestination:', selectedDestination, 'mapRef.current:', !!mapRef.current);
     
     if (selectedOrigin && selectedDestination && mapRef.current) {
-      console.log('✅ Origine et destination sélectionnées, calcul itinéraire...');
-      // Calculer l'itinéraire entre l'origine et la destination sélectionnées
-      calculateRoute(selectedOrigin, selectedDestination);
+      console.log('✅ Centrage de la carte sur l\'itinéraire...');
       
       // Centrer la carte pour inclure les deux points
       const midLat = (selectedOrigin[1] + selectedDestination[1]) / 2;
@@ -197,39 +176,17 @@ export default function GoogleMapViewComponent({
         latitudeDelta: Math.abs(selectedDestination[1] - selectedOrigin[1]) * 1.5,
         longitudeDelta: Math.abs(selectedDestination[0] - selectedOrigin[0]) * 1.5,
       }, 1000);
-    } else if (selectedDestination && mapRef.current) {
-      console.log('✅ Seulement destination sélectionnée, calcul itinéraire depuis position utilisateur...');
-      // Fallback : utiliser la position utilisateur comme origine
-      const userPos = userLocation || currentUserLocation;
-      if (userPos) {
-        calculateRoute(userPos, selectedDestination);
-      }
-    } else {
-      // Effacer l'itinéraire quand pas assez d'informations
-      console.log('❌ Effacement de l\'itinéraire - selectedOrigin:', selectedOrigin, 'selectedDestination:', selectedDestination, 'mapRef.current:', !!mapRef.current);
-      setRouteCoordinates([]);
     }
-  }, [selectedOrigin, selectedDestination, userLocation, currentUserLocation]);
+  }, [selectedOrigin, selectedDestination]);
 
   // Recentrer la carte quand la position utilisateur change (seulement si pas d'itinéraire)
   useEffect(() => {
-    if (currentUserLocation && mapRef.current && routeCoordinates.length === 0) {
-      console.log('Recentrage automatique sur la position utilisateur (pas d\'itinéraire)');
+    if (currentUserLocation && mapRef.current) {
+      console.log('Recentrage automatique sur la position utilisateur');
       centerOnUserLocation();
     }
-  }, [currentUserLocation, routeCoordinates.length]);
+  }, [currentUserLocation]);
 
-  // Log quand l'itinéraire change
-  useEffect(() => {
-    console.log('🔄 Itinéraire mis à jour:', routeCoordinates.length, 'points');
-    if (routeCoordinates.length > 0) {
-      console.log('📍 Premier point:', routeCoordinates[0]);
-      console.log('🏁 Dernier point:', routeCoordinates[routeCoordinates.length - 1]);
-      console.log('🎨 Couleur actuelle:', customRouteColor);
-    } else {
-      console.log('❌ Aucun itinéraire affiché');
-    }
-  }, [routeCoordinates, customRouteColor]);
 
 
 
@@ -346,6 +303,7 @@ export default function GoogleMapViewComponent({
         
         if (decodedCoordinates.length > 0) {
           setRouteCoordinates(decodedCoordinates)
+          console.log('✅ Coordonnées itinéraire définies:', decodedCoordinates.length, 'points')
           
           // Afficher les informations spécifiques au mode de transport
           if (route.legs && route.legs.length > 0) {
@@ -421,7 +379,7 @@ export default function GoogleMapViewComponent({
 
   const calculateRoute = async (origin: [number, number], destination: [number, number]) => {
     try {
-      console.log('Calcul itinéraire:', { origin, destination })
+      console.log('🚀 Début calcul itinéraire:', { origin, destination })
 
       // Validation des coordonnées
       if (!origin || !destination || 
@@ -564,17 +522,12 @@ export default function GoogleMapViewComponent({
               duration: `${Math.round(totalDuration / 60)} min`
             })
             
-            // Mettre à jour les données du trajet pour le bottom sheet
-            const leg = route.legs[0];
-            setTripData({
-              origin: leg.start_address || 'Origine',
-              destination: leg.end_address || 'Destination',
-              distance: leg.distance?.text || '',
-              duration: leg.duration?.text || '',
-              estimatedPrice: calculateEstimatedPrice(totalDistance / 1000),
-              routeType: 'driving',
-              trafficLevel: getTrafficLevel(leg.duration_in_traffic?.value, leg.duration?.value),
-              eta: calculateETA(leg.duration?.value),
+            // Données du trajet calculées
+            console.log('Données du trajet:', {
+              origin: route.legs[0]?.start_address || 'Origine',
+              destination: route.legs[0]?.end_address || 'Destination',
+              distance: route.legs[0]?.distance?.text || '',
+              duration: route.legs[0]?.duration?.text || '',
             });
           }
         } else {
@@ -792,7 +745,7 @@ export default function GoogleMapViewComponent({
   console.log('🎯 Destination sélectionnée:', selectedDestination);
   console.log('🎯 Rendu marqueur origine:', selectedOrigin ? `[${selectedOrigin[0]}, ${selectedOrigin[1]}]` : 'null');
   console.log('🎯 Rendu marqueur destination:', selectedDestination ? `[${selectedDestination[0]}, ${selectedDestination[1]}]` : 'null');
-  console.log('🎯 Rendu itinéraire:', routeCoordinates.length > 0 ? `${routeCoordinates.length} points` : 'aucun');
+  console.log('🎯 Rendu itinéraire: aucun');
 
 
 
@@ -815,7 +768,7 @@ export default function GoogleMapViewComponent({
         showsMyLocationButton={true}
         showsCompass={true}
         showsScale={true}
-        showsTraffic={false}
+        showsTraffic={true}
         showsBuildings={false}
         showsIndoors={false}
         onPress={handleMapPress}
@@ -926,85 +879,33 @@ export default function GoogleMapViewComponent({
            />
          )}
 
-        {/* Itinéraire personnalisé avec styles avancés */}
-        {routeCoordinates.length > 0 && (
-          <>
-            {/* Log pour déboguer */}
-            {console.log('🗺️ MapView - Affichage CustomRoute avec couleur:', customRouteColor, 'routeCoordinates:', routeCoordinates.length)}
-            {console.log('🔍 Vérification - customRouteColor === #000000:', customRouteColor === '#000000')}
-            <CustomRoute
-              coordinates={routeCoordinates}
-              strokeColor={customRouteColor}
-              strokeWidth={routeStyle.strokeWidth}
-              animated={routeStyle.animated}
-              gradient={routeStyle.gradient}
-              startColor={routeStyle.startColor}
-              endColor={routeStyle.endColor}
-              showDirectionArrows={routeStyle.showDirectionArrows}
-              lineDashPattern={routeStyle.lineDashPattern}
-              zIndex={1000}
-            />
-          </>
+        {/* Itinéraire Google Maps avec MapViewDirections */}
+        {selectedOrigin && selectedDestination && (
+          <MapViewDirections
+            origin={{
+              latitude: selectedOrigin[1],
+              longitude: selectedOrigin[0],
+            }}
+            destination={{
+              latitude: selectedDestination[1],
+              longitude: selectedDestination[0],
+            }}
+            apikey={GOOGLE_MAPS_CONFIG.API_KEY}
+            strokeWidth={4}
+            strokeColor="#007AFF"
+            mode="DRIVING"
+            onReady={(result) => {
+              console.log('✅ Itinéraire Google Maps calculé:', result);
+            }}
+            onError={(errorMessage) => {
+              console.log('❌ Erreur itinéraire Google Maps:', errorMessage);
+            }}
+          />
         )}
        </MapView>
 
-       {/* Composant de test pour vérifier la couleur noire */}
-       <TestRoute />
 
-       {/* Bouton de configuration du style d'itinéraire */}
-       {routeCoordinates.length > 0 && (
-         <TouchableOpacity
-           style={styles.routeConfigButton}
-           onPress={() => setShowRouteConfig(!showRouteConfig)}
-         >
-           <Text style={styles.routeConfigButtonText}>🎨</Text>
-         </TouchableOpacity>
-       )}
 
-       {/* Bouton de sélection de couleurs */}
-       {routeCoordinates.length > 0 && (
-         <TouchableOpacity
-           style={styles.colorPickerButton}
-           onPress={() => setShowColorPicker(!showColorPicker)}
-         >
-           <Text style={styles.colorPickerButtonText}>🎨</Text>
-         </TouchableOpacity>
-       )}
-
-       {/* Bouton des détails du trajet */}
-       {routeCoordinates.length > 0 && (
-         <TouchableOpacity
-           style={styles.tripDetailsButton}
-           onPress={() => setShowTripDetails(true)}
-         >
-           <Text style={styles.tripDetailsButtonText}>📋</Text>
-         </TouchableOpacity>
-       )}
-
-       {/* Panneau de configuration du style d'itinéraire */}
-       {showRouteConfig && routeCoordinates.length > 0 && (
-         <RouteStyleConfig
-           selectedStyle={routeStyle}
-           onStyleChange={setRouteStyle}
-         />
-       )}
-
-       {/* Panneau de sélection de couleurs */}
-       {showColorPicker && routeCoordinates.length > 0 && (
-         <ColorPicker
-           selectedColor={customRouteColor}
-           onColorChange={setCustomRouteColor}
-           title="Couleur de l'Itinéraire"
-         />
-       )}
-
-       {/* Bottom Sheet des détails du trajet */}
-       <TripDetailsBottomSheet
-         visible={showTripDetails}
-         onClose={() => setShowTripDetails(false)}
-         tripData={tripData}
-         onCalculatePrice={() => console.log('Calcul de prix demandé')}
-       />
     </View>
   );
 }
