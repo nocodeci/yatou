@@ -1,6 +1,7 @@
 const express = require('express');
 const { supabase } = require('../config/supabase');
 const { authenticateToken } = require('../middleware/auth');
+const { notificationService } = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.post('/', authenticateToken, async (req, res) => {
       description,
       weight,
       dimensions,
-      special_instructions
+      special_instructions,
     } = req.body;
 
     const userId = req.user.id;
@@ -24,7 +25,7 @@ router.post('/', authenticateToken, async (req, res) => {
     if (!delivery_address || !delivery_coordinates) {
       return res.status(400).json({
         success: false,
-        message: 'Adresse de livraison et coordonnées sont requis'
+        message: 'Adresse de livraison et coordonnées sont requis',
       });
     }
 
@@ -43,9 +44,12 @@ router.post('/', authenticateToken, async (req, res) => {
           dimensions: dimensions || null,
           special_instructions: special_instructions || null,
           status: 'pending',
-          estimated_price: calculateEstimatedPrice(weight, delivery_coordinates),
-          created_at: new Date().toISOString()
-        }
+          estimated_price: calculateEstimatedPrice(
+            weight,
+            delivery_coordinates,
+          ),
+          created_at: new Date().toISOString(),
+        },
       ])
       .select()
       .single();
@@ -54,22 +58,34 @@ router.post('/', authenticateToken, async (req, res) => {
       console.error('Erreur création livraison:', error);
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la création de la livraison'
+        message: 'Erreur lors de la création de la livraison',
       });
+    }
+
+    // Envoyer notification aux livreurs
+    try {
+      console.log('📱 Envoi notification nouvelle commande aux livreurs...');
+      await notificationService.sendOrderNotificationToDrivers(delivery);
+    } catch (notificationError) {
+      console.error(
+        '⚠️ Erreur notification (commande créée quand même):',
+        notificationError,
+      );
+      // Ne pas faire échouer la création de commande si les notifications échouent
     }
 
     res.status(201).json({
       success: true,
       message: 'Livraison créée avec succès',
       data: {
-        delivery
-      }
+        delivery,
+      },
     });
   } catch (error) {
     console.error('Erreur création livraison:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur interne du serveur'
+      message: 'Erreur interne du serveur',
     });
   }
 });
@@ -82,10 +98,12 @@ router.get('/', authenticateToken, async (req, res) => {
 
     let query = supabase
       .from('deliveries')
-      .select(`
+      .select(
+        `
         *,
         driver:drivers(name, phone, vehicle_info)
-      `)
+      `,
+      )
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -104,7 +122,7 @@ router.get('/', authenticateToken, async (req, res) => {
       console.error('Erreur récupération livraisons:', error);
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la récupération des livraisons'
+        message: 'Erreur lors de la récupération des livraisons',
       });
     }
 
@@ -115,15 +133,15 @@ router.get('/', authenticateToken, async (req, res) => {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: count || deliveries.length
-        }
-      }
+          total: count || deliveries.length,
+        },
+      },
     });
   } catch (error) {
     console.error('Erreur récupération livraisons:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur interne du serveur'
+      message: 'Erreur interne du serveur',
     });
   }
 });
@@ -136,10 +154,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
     const { data: delivery, error } = await supabase
       .from('deliveries')
-      .select(`
+      .select(
+        `
         *,
         driver:drivers(name, phone, vehicle_info)
-      `)
+      `,
+      )
       .eq('id', id)
       .eq('user_id', userId)
       .single();
@@ -147,21 +167,21 @@ router.get('/:id', authenticateToken, async (req, res) => {
     if (error || !delivery) {
       return res.status(404).json({
         success: false,
-        message: 'Livraison non trouvée'
+        message: 'Livraison non trouvée',
       });
     }
 
     res.json({
       success: true,
       data: {
-        delivery
-      }
+        delivery,
+      },
     });
   } catch (error) {
     console.error('Erreur récupération livraison:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur interne du serveur'
+      message: 'Erreur interne du serveur',
     });
   }
 });
@@ -174,11 +194,18 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     const userId = req.user.id;
 
     // Validation du statut
-    const validStatuses = ['pending', 'confirmed', 'picked_up', 'in_transit', 'delivered', 'cancelled'];
+    const validStatuses = [
+      'pending',
+      'confirmed',
+      'picked_up',
+      'in_transit',
+      'delivered',
+      'cancelled',
+    ];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Statut invalide'
+        message: 'Statut invalide',
       });
     }
 
@@ -193,7 +220,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     if (!existingDelivery) {
       return res.status(404).json({
         success: false,
-        message: 'Livraison non trouvée'
+        message: 'Livraison non trouvée',
       });
     }
 
@@ -202,7 +229,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       .from('deliveries')
       .update({
         status,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id)
       .select()
@@ -212,22 +239,38 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       console.error('Erreur mise à jour statut:', error);
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la mise à jour du statut'
+        message: 'Erreur lors de la mise à jour du statut',
       });
+    }
+
+    // Envoyer notification de changement de statut au client
+    try {
+      console.log(`📱 Envoi notification changement de statut: ${status}`);
+      await notificationService.sendStatusUpdateToClient(
+        userId,
+        delivery,
+        status,
+      );
+    } catch (notificationError) {
+      console.error(
+        '⚠️ Erreur notification statut (statut mis à jour quand même):',
+        notificationError,
+      );
+      // Ne pas faire échouer la mise à jour si les notifications échouent
     }
 
     res.json({
       success: true,
       message: 'Statut mis à jour avec succès',
       data: {
-        delivery
-      }
+        delivery,
+      },
     });
   } catch (error) {
     console.error('Erreur mise à jour statut:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur interne du serveur'
+      message: 'Erreur interne du serveur',
     });
   }
 });
@@ -249,14 +292,14 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     if (!delivery) {
       return res.status(404).json({
         success: false,
-        message: 'Livraison non trouvée'
+        message: 'Livraison non trouvée',
       });
     }
 
     if (delivery.status !== 'pending' && delivery.status !== 'confirmed') {
       return res.status(400).json({
         success: false,
-        message: 'Cette livraison ne peut plus être annulée'
+        message: 'Cette livraison ne peut plus être annulée',
       });
     }
 
@@ -265,7 +308,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       .from('deliveries')
       .update({
         status: 'cancelled',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id);
 
@@ -273,19 +316,19 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       console.error('Erreur annulation livraison:', error);
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de l\'annulation de la livraison'
+        message: "Erreur lors de l'annulation de la livraison",
       });
     }
 
     res.json({
       success: true,
-      message: 'Livraison annulée avec succès'
+      message: 'Livraison annulée avec succès',
     });
   } catch (error) {
     console.error('Erreur annulation livraison:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur interne du serveur'
+      message: 'Erreur interne du serveur',
     });
   }
 });
@@ -296,7 +339,7 @@ function calculateEstimatedPrice(weight, deliveryCoordinates) {
   // À adapter selon vos besoins
   const basePrice = 1000; // Prix de base en FCFA
   const weightMultiplier = weight ? Math.max(1, weight / 5) : 1;
-  
+
   return Math.round(basePrice * weightMultiplier);
 }
 

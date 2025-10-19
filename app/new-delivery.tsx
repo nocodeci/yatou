@@ -106,7 +106,8 @@ export default function NewDeliverySimpleScreen() {
     return true
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    console.log('🎯 handleSubmit appelé (new-delivery)');
     if (!validate()) return
 
     try {
@@ -118,6 +119,7 @@ export default function NewDeliverySimpleScreen() {
         postalCode: "00000",
         phone: "-",
         instructions: "",
+        coordinates: [-5.0189, 7.6995], // Coordonnées par défaut (Bouaké)
       }
 
       const deliveryAddress: DeliveryAddress = {
@@ -128,6 +130,7 @@ export default function NewDeliverySimpleScreen() {
         postalCode: "00000",
         phone: "-",
         instructions: "",
+        coordinates: [-5.0189, 7.6995], // Coordonnées par défaut (Bouaké)
       }
 
       const pkg: PackageType = {
@@ -153,12 +156,13 @@ export default function NewDeliverySimpleScreen() {
         price: calculateDeliveryPrice(parseFloat(productPrice), quantity),
       }
 
-      addDelivery(deliveryRecord as any)
+      await addDelivery(deliveryRecord as any)
 
       Alert.alert("Succès", "Demande de livraison créée.", [
         { text: "OK", onPress: () => router.push("/(tabs)/deliveries") },
       ])
     } catch (e) {
+      console.error('Erreur lors de la création de la livraison:', e);
       Alert.alert("Erreur", "Impossible de créer la livraison.")
     }
   }

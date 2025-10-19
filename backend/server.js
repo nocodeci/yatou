@@ -12,19 +12,26 @@ const deliveryRoutes = require('./routes/deliveries');
 const userRoutes = require('./routes/users');
 const mapboxRoutes = require('./routes/mapbox');
 const directionsRoutes = require('./routes/directions');
+const notificationRoutes = require('./routes/notifications');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware de sécurité
 app.use(helmet());
 
 // Middleware CORS
-app.use(cors({
-  origin: ['http://localhost:8081', 'http://192.168.100.191:8081', 'exp://192.168.100.191:8081'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:8081',
+      'http://192.168.100.191:8081',
+      'exp://192.168.100.191:8081',
+    ],
+    credentials: true,
+  }),
+);
 
 // Middleware de logging
 app.use(morgan('combined'));
@@ -38,7 +45,7 @@ app.get('/', (req, res) => {
   res.json({
     message: 'API Yatou Delivery',
     version: '1.0.0',
-    status: 'running'
+    status: 'running',
   });
 });
 
@@ -47,6 +54,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/mapbox', mapboxRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api', directionsRoutes);
 
 // Middleware de gestion d'erreurs
@@ -56,7 +64,7 @@ app.use(errorHandler);
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route non trouvée'
+    message: 'Route non trouvée',
   });
 });
 
@@ -65,7 +73,7 @@ const startServer = async () => {
   try {
     // Initialiser le cache backend
     await BackendCacheManager.init();
-    
+
     // Démarrage du serveur
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Serveur Yatou Delivery démarré sur le port ${PORT}`);

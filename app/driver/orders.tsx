@@ -8,19 +8,19 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { 
-  MapPin, 
-  Clock, 
-  Package, 
-  User, 
-  Phone, 
-  Check, 
+import {
+  MapPin,
+  Clock,
+  Package,
+  User,
+  Phone,
+  Check,
   X,
   Navigation,
-  DollarSign
+  DollarSign,
 } from 'lucide-react-native';
 import { AppColors } from '@/app/constants/colors';
-import { deliveryService } from '@/app/services/api';
+import { deliveryService, driverService } from '@/app/services/api';
 import { useAuthStore } from '@/app/store/authStore';
 
 const { width } = Dimensions.get('window');
@@ -42,7 +42,9 @@ interface Order {
 
 export default function DriverOrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [selectedTab, setSelectedTab] = useState<'available' | 'active'>('available');
+  const [selectedTab, setSelectedTab] = useState<'available' | 'active'>(
+    'available',
+  );
   const { user } = useAuthStore();
 
   // Charger les commandes depuis l'API
@@ -52,30 +54,43 @@ export default function DriverOrdersScreen() {
 
   const loadOrders = async () => {
     if (!user) return;
-    
+
     try {
       if (selectedTab === 'available') {
         // Charger les commandes disponibles
-        const availableDeliveries = await deliveryService.getAvailableDeliveries();
-        const formattedOrders: Order[] = availableDeliveries.map(delivery => ({
-          id: delivery.id,
-          clientName: 'Client', // À récupérer depuis la table users
-          clientPhone: '+225 00 00 00 00', // À récupérer depuis la table users
-          pickupAddress: delivery.pickup_address,
-          deliveryAddress: delivery.delivery_address,
-          distance: 0, // À calculer
-          price: delivery.estimated_price,
-          vehicleType: 'moto', // À déterminer selon le type de livraison
-          isUrgent: false, // À déterminer selon les options
-          estimatedTime: delivery.estimated_duration || 30,
-          status: 'pending',
-          createdAt: delivery.created_at,
-        }));
+        const availableDeliveries =
+          await deliveryService.getAvailableDeliveries();
+        const formattedOrders: Order[] = availableDeliveries.map(
+          (delivery) => ({
+            id: delivery.id,
+            clientName: 'Client', // À récupérer depuis la table users
+            clientPhone: '+225 00 00 00 00', // À récupérer depuis la table users
+            pickupAddress: delivery.pickup_address,
+            deliveryAddress: delivery.delivery_address,
+            distance: 0, // À calculer
+            price: delivery.estimated_price,
+            vehicleType: 'moto', // À déterminer selon le type de livraison
+            isUrgent: false, // À déterminer selon les options
+            estimatedTime: delivery.estimated_duration || 30,
+            status: 'pending',
+            createdAt: delivery.created_at,
+          }),
+        );
         setOrders(formattedOrders);
       } else {
         // Charger les commandes actives du livreur
-        const driverDeliveries = await deliveryService.getDriverDeliveries(user.id);
-        const formattedOrders: Order[] = driverDeliveries.map(delivery => ({
+        // D'abord récupérer le profil livreur pour avoir l'ID correct
+        const driverProfile = await driverService.getDriverProfile(user.id);
+        if (!driverProfile) {
+          console.error('Profil livreur non trouvé');
+          setOrders([]);
+          return;
+        }
+
+        const driverDeliveries = await deliveryService.getDriverDeliveries(
+          driverProfile.id,
+        );
+        const formattedOrders: Order[] = driverDeliveries.map((delivery) => ({
           id: delivery.id,
           clientName: 'Client', // À récupérer depuis la table users
           clientPhone: '+225 00 00 00 00', // À récupérer depuis la table users
@@ -86,8 +101,12 @@ export default function DriverOrdersScreen() {
           vehicleType: 'moto', // À déterminer selon le type de livraison
           isUrgent: false, // À déterminer selon les options
           estimatedTime: delivery.estimated_duration || 30,
-          status: delivery.status === 'confirmed' ? 'accepted' : 
-                  delivery.status === 'picked_up' ? 'in_progress' : 'pending',
+          status:
+            delivery.status === 'confirmed'
+              ? 'accepted'
+              : delivery.status === 'picked_up'
+                ? 'in_progress'
+                : 'pending',
           createdAt: delivery.created_at,
         }));
         setOrders(formattedOrders);
@@ -95,7 +114,7 @@ export default function DriverOrdersScreen() {
     } catch (error) {
       console.error('Erreur lors du chargement des commandes:', error);
       Alert.alert('Erreur', 'Impossible de charger les commandes');
-      
+
       // Pas de données de fallback - laisser la liste vide
       setOrders([]);
     }
@@ -103,32 +122,76 @@ export default function DriverOrdersScreen() {
 
   const handleAcceptOrder = async (orderId: string) => {
     if (!user) return;
-    
+
     Alert.alert(
       'Accepter la commande',
       'Êtes-vous sûr de vouloir accepter cette commande ?',
       [
         { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Accepter', 
+        {
+          text: 'Accepter',
           onPress: async () => {
             try {
-              await deliveryService.acceptDelivery(orderId, user.id);
-              setOrders(prev => prev.map(order => 
-                order.id === orderId 
-                  ? { ...order, status: 'accepted' as const }
-                  : order
-              ));
-              Alert.alert('Succès', 'Commande acceptée !');
-              // Recharger les commandes
-              loadOrders();
+              // Récupérer le profil livreur pour avoir l'ID correct
+              const driverProfile = await driverService.getDriverProfile(
+                user.id,
+              );
+              if (!driverProfile) {
+                Alert.alert('Erreur', 'Profil livreur non trouvé');
+                return;
+              }
+
+              console.log(
+                '🔍 DEBUG - Acceptation depuis orders.tsx (SANS données de notification)',
+              );
+
+              // Utiliser le système de notifications pour notifier le client
+              const { driverRequestService } = await import(
+                '@/app/services/driverRequestService'
+              );
+              const success = await driverRequestService.handleDriverResponse({
+                driverId: driverProfile.id,
+                orderId: orderId,
+                accepted: true,
+                timestamp: new Date(),
+                // ❌ PROBLÈME: PAS DE notificationData ici !
+                // Les données de notification ne sont disponibles que dans home.tsx
+              });
+
+              if (success) {
+                setOrders((prev) =>
+                  prev.map((order) =>
+                    order.id === orderId
+                      ? { ...order, status: 'accepted' as const }
+                      : order,
+                  ),
+                );
+                Alert.alert(
+                  'Succès',
+                  'Commande acceptée ! Le client a été notifié.',
+                );
+                // Recharger les commandes
+                loadOrders();
+              } else {
+                // Fallback: utiliser l'ancien système si le nouveau échoue
+                await deliveryService.acceptDelivery(orderId, driverProfile.id);
+                setOrders((prev) =>
+                  prev.map((order) =>
+                    order.id === orderId
+                      ? { ...order, status: 'accepted' as const }
+                      : order,
+                  ),
+                );
+                Alert.alert('Succès', 'Commande acceptée !');
+                loadOrders();
+              }
             } catch (error) {
-              console.error('Erreur lors de l\'acceptation:', error);
-              Alert.alert('Erreur', 'Impossible d\'accepter la commande');
+              console.error("Erreur lors de l'acceptation:", error);
+              Alert.alert('Erreur', "Impossible d'accepter la commande");
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -138,13 +201,13 @@ export default function DriverOrdersScreen() {
       'Êtes-vous sûr de vouloir refuser cette commande ?',
       [
         { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Refuser', 
+        {
+          text: 'Refuser',
           style: 'destructive',
           onPress: async () => {
             try {
               await deliveryService.rejectDelivery(orderId);
-              setOrders(prev => prev.filter(order => order.id !== orderId));
+              setOrders((prev) => prev.filter((order) => order.id !== orderId));
               Alert.alert('Commande refusée', 'La commande a été refusée');
               // Recharger les commandes
               loadOrders();
@@ -152,21 +215,26 @@ export default function DriverOrdersScreen() {
               console.error('Erreur lors du refus:', error);
               Alert.alert('Erreur', 'Impossible de refuser la commande');
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
   const handleStartDelivery = async (orderId: string) => {
     try {
       await deliveryService.updateDeliveryStatus(orderId, 'picked_up');
-      setOrders(prev => prev.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'in_progress' as const }
-          : order
-      ));
-      Alert.alert('Livraison démarrée', 'Vous pouvez maintenant commencer la livraison');
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId
+            ? { ...order, status: 'in_progress' as const }
+            : order,
+        ),
+      );
+      Alert.alert(
+        'Livraison démarrée',
+        'Vous pouvez maintenant commencer la livraison',
+      );
       // Recharger les commandes
       loadOrders();
     } catch (error) {
@@ -181,16 +249,18 @@ export default function DriverOrdersScreen() {
       'Confirmez que la livraison est terminée',
       [
         { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Confirmer', 
+        {
+          text: 'Confirmer',
           onPress: async () => {
             try {
               await deliveryService.updateDeliveryStatus(orderId, 'delivered');
-              setOrders(prev => prev.map(order => 
-                order.id === orderId 
-                  ? { ...order, status: 'completed' as const }
-                  : order
-              ));
+              setOrders((prev) =>
+                prev.map((order) =>
+                  order.id === orderId
+                    ? { ...order, status: 'completed' as const }
+                    : order,
+                ),
+              );
               Alert.alert('Succès', 'Livraison terminée avec succès !');
               // Recharger les commandes
               loadOrders();
@@ -198,42 +268,58 @@ export default function DriverOrdersScreen() {
               console.error('Erreur lors de la finalisation:', error);
               Alert.alert('Erreur', 'Impossible de finaliser la livraison');
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
-  const availableOrders = orders.filter(order => order.status === 'pending');
-  const activeOrders = orders.filter(order => ['accepted', 'in_progress'].includes(order.status));
+  const availableOrders = orders.filter((order) => order.status === 'pending');
+  const activeOrders = orders.filter((order) =>
+    ['accepted', 'in_progress'].includes(order.status),
+  );
 
   const renderOrderCard = (order: Order) => {
     const getVehicleIcon = (type: string) => {
       switch (type) {
-        case 'moto': return '🏍️';
-        case 'fourgon': return '🚐';
-        case 'camion': return '🚛';
-        default: return '🚗';
+        case 'moto':
+          return '🏍️';
+        case 'fourgon':
+          return '🚐';
+        case 'camion':
+          return '🚛';
+        default:
+          return '🚗';
       }
     };
 
     const getStatusColor = (status: string) => {
       switch (status) {
-        case 'pending': return '#F59E0B';
-        case 'accepted': return '#3B82F6';
-        case 'in_progress': return '#10B981';
-        case 'completed': return '#6B7280';
-        default: return '#6B7280';
+        case 'pending':
+          return '#F59E0B';
+        case 'accepted':
+          return '#3B82F6';
+        case 'in_progress':
+          return '#10B981';
+        case 'completed':
+          return '#6B7280';
+        default:
+          return '#6B7280';
       }
     };
 
     const getStatusText = (status: string) => {
       switch (status) {
-        case 'pending': return 'En attente';
-        case 'accepted': return 'Acceptée';
-        case 'in_progress': return 'En cours';
-        case 'completed': return 'Terminée';
-        default: return 'Inconnu';
+        case 'pending':
+          return 'En attente';
+        case 'accepted':
+          return 'Acceptée';
+        case 'in_progress':
+          return 'En cours';
+        case 'completed':
+          return 'Terminée';
+        default:
+          return 'Inconnu';
       }
     };
 
@@ -244,7 +330,8 @@ export default function DriverOrdersScreen() {
             <Text style={styles.clientName}>{order.clientName}</Text>
             <View style={styles.orderMeta}>
               <Text style={styles.vehicleType}>
-                {getVehicleIcon(order.vehicleType)} {order.vehicleType.toUpperCase()}
+                {getVehicleIcon(order.vehicleType)}{' '}
+                {order.vehicleType.toUpperCase()}
               </Text>
               {order.isUrgent && (
                 <View style={styles.urgentBadge}>
@@ -253,7 +340,12 @@ export default function DriverOrdersScreen() {
               )}
             </View>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: getStatusColor(order.status) },
+            ]}
+          >
             <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
           </View>
         </View>
@@ -318,7 +410,9 @@ export default function DriverOrdersScreen() {
           <View style={styles.orderActions}>
             <TouchableOpacity
               style={styles.phoneButton}
-              onPress={() => Alert.alert('Appel', `Appeler ${order.clientPhone}`)}
+              onPress={() =>
+                Alert.alert('Appel', `Appeler ${order.clientPhone}`)
+              }
             >
               <Phone size={20} color="#3B82F6" />
               <Text style={styles.phoneButtonText}>Appeler</Text>
@@ -337,7 +431,9 @@ export default function DriverOrdersScreen() {
           <View style={styles.orderActions}>
             <TouchableOpacity
               style={styles.phoneButton}
-              onPress={() => Alert.alert('Appel', `Appeler ${order.clientPhone}`)}
+              onPress={() =>
+                Alert.alert('Appel', `Appeler ${order.clientPhone}`)
+              }
             >
               <Phone size={20} color="#3B82F6" />
               <Text style={styles.phoneButtonText}>Appeler</Text>
@@ -361,10 +457,18 @@ export default function DriverOrdersScreen() {
         <Text style={styles.headerTitle}>Commandes</Text>
         <View style={styles.tabContainer}>
           <TouchableOpacity
-            style={[styles.tab, selectedTab === 'available' && styles.tabActive]}
+            style={[
+              styles.tab,
+              selectedTab === 'available' && styles.tabActive,
+            ]}
             onPress={() => setSelectedTab('available')}
           >
-            <Text style={[styles.tabText, selectedTab === 'available' && styles.tabTextActive]}>
+            <Text
+              style={[
+                styles.tabText,
+                selectedTab === 'available' && styles.tabTextActive,
+              ]}
+            >
               Disponibles ({availableOrders.length})
             </Text>
           </TouchableOpacity>
@@ -372,7 +476,12 @@ export default function DriverOrdersScreen() {
             style={[styles.tab, selectedTab === 'active' && styles.tabActive]}
             onPress={() => setSelectedTab('active')}
           >
-            <Text style={[styles.tabText, selectedTab === 'active' && styles.tabTextActive]}>
+            <Text
+              style={[
+                styles.tabText,
+                selectedTab === 'active' && styles.tabTextActive,
+              ]}
+            >
               Actives ({activeOrders.length})
             </Text>
           </TouchableOpacity>
@@ -387,7 +496,9 @@ export default function DriverOrdersScreen() {
             ) : (
               <View style={styles.emptyState}>
                 <Package size={48} color="#D1D5DB" />
-                <Text style={styles.emptyTitle}>Aucune commande disponible</Text>
+                <Text style={styles.emptyTitle}>
+                  Aucune commande disponible
+                </Text>
                 <Text style={styles.emptyText}>
                   Restez en ligne pour recevoir de nouvelles commandes
                 </Text>

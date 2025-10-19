@@ -87,6 +87,8 @@ export default function DriverSearchModal({
     setCurrentDriverIndex(0);
 
     try {
+      console.log('🚀 DriverSearchModal: Début de la recherche de livreurs');
+      
       // Simuler la recherche avec une barre de progression
       const progressInterval = setInterval(() => {
         setSearchProgress(prev => {
@@ -123,10 +125,13 @@ export default function DriverSearchModal({
           [{ text: 'OK', onPress: onClose }]
         );
       } else {
-        // Créer la demande de commande
+        console.log('📦 DriverSearchModal: Commande déjà créée, recherche de livreurs...');
+        
+        // La commande est déjà créée via addDelivery dans l'écran principal
+        // Créer juste la demande de commande pour les notifications
         const orderRequest = driverRequestService.createOrderRequest(
-          'client_id', // À remplacer par l'ID du client connecté
-          'Client', // À remplacer par le nom du client
+          'client_id', // Sera remplacé par le vrai ID dans addDelivery
+          'Client', // Sera remplacé par le vrai nom dans addDelivery
           pickupAddress,
           deliveryAddress,
           estimatedPrice,
@@ -155,17 +160,22 @@ export default function DriverSearchModal({
     setTimeoutCountdown(30); // 30 secondes pour répondre
 
     // Envoyer la vraie demande au livreur avec notification push
-    const success = await driverRequestService.sendRequestToDriver(driver.id, orderRequest);
+    // Ne pas considérer l'absence de token comme un échec - les notifications locales fonctionnent
+    await driverRequestService.sendRequestToDriver(driver.id, orderRequest);
     
-    if (!success) {
-      // Si l'envoi échoue, essayer le livreur suivant
-      handleDriverRejected();
-    }
+    // La demande est envoyée (avec notification locale si pas de token push)
+    // Attendre la réponse du livreur ou le timeout
   };
 
   const handleDriverAccepted = () => {
     if (currentDriver) {
       setSearchStatus('accepted');
+      
+      // Recharger les livraisons du client
+      const { useDeliveryStore } = require('@/app/store/delivery-store');
+      const { loadData } = useDeliveryStore.getState();
+      loadData();
+      
       setTimeout(() => {
         onDriverAccepted(currentDriver);
         onClose();

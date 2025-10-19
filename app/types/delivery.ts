@@ -6,6 +6,7 @@ export interface DeliveryAddress {
     postalCode: string;
     phone: string;
     instructions?: string;
+    coordinates?: [number, number]; // [longitude, latitude]
   }
   
   export interface Package {

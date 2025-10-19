@@ -33,10 +33,10 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const response = await authService.login({ email, password });
-      
+
       // Sauvegarder dans le store
-      login(response.user, response.token);
-      
+      await login(response.user, response.token, response.refreshToken);
+
       // Redirection basée sur le rôle
       if (response.user.role === 'driver') {
         router.replace('/driver/home');
@@ -52,15 +52,17 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
           <YatouLogo size={120} />
           <Text style={styles.title}>Connexion</Text>
-          <Text style={styles.subtitle}>Connectez-vous à votre compte YATOU</Text>
+          <Text style={styles.subtitle}>
+            Connectez-vous à votre compte YATOU
+          </Text>
         </View>
 
         <View style={styles.formContainer}>
@@ -107,7 +109,10 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+            style={[
+              styles.loginButton,
+              isLoading && styles.loginButtonDisabled,
+            ]}
             onPress={handleLogin}
             disabled={isLoading}
           >
@@ -126,9 +131,7 @@ export default function LoginScreen() {
             style={styles.registerButton}
             onPress={() => router.push('/auth/register')}
           >
-            <Text style={styles.registerButtonText}>
-              Créer un compte
-            </Text>
+            <Text style={styles.registerButtonText}>Créer un compte</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

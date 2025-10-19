@@ -130,7 +130,7 @@ export default function SelectLocationsScreen() {
   const [isSelecting, setIsSelecting] = useState(false) // Nouvel état pour éviter les conflits
 
   // URL du backend
-  const BACKEND_URL = "http://192.168.100.219:3001"
+  const BACKEND_URL = "http://192.168.100.191:3001"
 
   // Log de l'état actuel
   console.log("🔄 État actuel:", {
@@ -141,7 +141,7 @@ export default function SelectLocationsScreen() {
     isSelecting
   })
 
-  // Fonction pour rechercher des lieux via l'API Google Places
+  // Fonction pour rechercher des lieux via l'API Google Places directement
   const searchPlaces = async (query: string) => {
     if (query.length < 2) {
       setSearchResults([])
@@ -152,7 +152,20 @@ export default function SelectLocationsScreen() {
     console.log("🔍 Recherche en cours:", query)
     
     try {
-      const url = `${BACKEND_URL}/api/places/autocomplete?input=${encodeURIComponent(query)}`
+      // Utiliser directement l'API Google Places
+      const apiKey = "AIzaSyBOwNDFwx9EerTB29GCdwyCyaaQIDgs9UI"
+      
+      const params = new URLSearchParams({
+        input: query,
+        key: apiKey,
+        language: "fr",
+        components: "country:ci", // Restreindre à la Côte d'Ivoire
+        location: "7.6833,-5.0333", // Centre de Bouaké
+        radius: "50000", // Rayon de 50km
+        sessiontoken: "yatou_session_" + Date.now(),
+      })
+
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params.toString()}`
       console.log("📡 URL de requête:", url)
       
       const response = await fetch(url)
@@ -179,9 +192,18 @@ export default function SelectLocationsScreen() {
   // Fonction pour obtenir les détails d'un lieu
   const getPlaceDetails = async (placeId: string): Promise<{ lat: number; lng: number } | null> => {
     try {
-      const response = await fetch(
-        `${BACKEND_URL}/api/places/details?place_id=${encodeURIComponent(placeId)}`
-      )
+      const apiKey = "AIzaSyBOwNDFwx9EerTB29GCdwyCyaaQIDgs9UI"
+      
+      const params = new URLSearchParams({
+        place_id: placeId,
+        key: apiKey,
+        language: "fr",
+        fields: "geometry,formatted_address,name,place_id",
+      })
+
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?${params.toString()}`
+      
+      const response = await fetch(url)
       const data = await response.json()
 
       if (data.status === "OK" && data.result && data.result.geometry) {
@@ -209,9 +231,20 @@ export default function SelectLocationsScreen() {
       console.log("📍 Origine:", origin)
       console.log("📍 Destination:", destination)
       
-      const response = await fetch(
-        `${BACKEND_URL}/api/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
-      )
+      const apiKey = "AIzaSyBOwNDFwx9EerTB29GCdwyCyaaQIDgs9UI"
+      
+      const params = new URLSearchParams({
+        origin: origin,
+        destination: destination,
+        key: apiKey,
+        language: "fr",
+        mode: "driving",
+        avoid: "tolls",
+      })
+
+      const url = `https://maps.googleapis.com/maps/api/directions/json?${params.toString()}`
+      
+      const response = await fetch(url)
       const data = await response.json()
 
       console.log("🗺️ Réponse API Directions:", data)

@@ -192,16 +192,55 @@ export default function RegisterScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Informations véhicule</Text>
               
-              <View style={styles.inputContainer}>
-                <Car size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Type de véhicule"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.vehicleType}
-                  onChangeText={(value) => handleInputChange('vehicleType', value)}
-                  editable={false}
-                />
+              {/* Sélecteur de type de véhicule */}
+              <View style={styles.vehicleTypeContainer}>
+                <Text style={styles.vehicleTypeLabel}>Type de véhicule</Text>
+                <View style={styles.vehicleTypeButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.vehicleTypeButton,
+                      formData.vehicleType === 'moto' && styles.vehicleTypeButtonActive
+                    ]}
+                    onPress={() => handleInputChange('vehicleType', 'moto')}
+                  >
+                    <Text style={[
+                      styles.vehicleTypeButtonText,
+                      formData.vehicleType === 'moto' && styles.vehicleTypeButtonTextActive
+                    ]}>
+                      🏍️ Moto
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.vehicleTypeButton,
+                      formData.vehicleType === 'fourgon' && styles.vehicleTypeButtonActive
+                    ]}
+                    onPress={() => handleInputChange('vehicleType', 'fourgon')}
+                  >
+                    <Text style={[
+                      styles.vehicleTypeButtonText,
+                      formData.vehicleType === 'fourgon' && styles.vehicleTypeButtonTextActive
+                    ]}>
+                      🚐 Fourgon
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.vehicleTypeButton,
+                      formData.vehicleType === 'camion' && styles.vehicleTypeButtonActive
+                    ]}
+                    onPress={() => handleInputChange('vehicleType', 'camion')}
+                  >
+                    <Text style={[
+                      styles.vehicleTypeButtonText,
+                      formData.vehicleType === 'camion' && styles.vehicleTypeButtonTextActive
+                    ]}>
+                      🚛 Camion
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View style={styles.inputContainer}>
@@ -424,5 +463,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: AppColors.primary,
     fontWeight: '500',
+  },
+  // Styles pour le sélecteur de type de véhicule
+  vehicleTypeContainer: {
+    marginBottom: 16,
+  },
+  vehicleTypeLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: AppColors.text,
+    marginBottom: 12,
+  },
+  vehicleTypeButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  vehicleTypeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  vehicleTypeButtonActive: {
+    borderColor: AppColors.primary,
+    backgroundColor: '#FEF3C7',
+  },
+  vehicleTypeButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  vehicleTypeButtonTextActive: {
+    color: AppColors.primary,
+    fontWeight: '600',
   },
 });

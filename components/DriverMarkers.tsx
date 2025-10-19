@@ -39,14 +39,16 @@ export default function DriverMarkers({
     loadAvailableDrivers();
   }, [centerLat, centerLng, radiusKm]);
 
-  // Rafraîchir automatiquement les positions toutes les 10 secondes
+  // Rafraîchir automatiquement les positions toutes les 30 secondes (réduit la fréquence)
   useEffect(() => {
     const interval = setInterval(() => {
-      loadAvailableDrivers();
-    }, 10000); // Rafraîchir toutes les 10 secondes
+      if (!isLoading) { // Éviter les appels simultanés
+        loadAvailableDrivers();
+      }
+    }, 30000); // Rafraîchir toutes les 30 secondes au lieu de 10
 
     return () => clearInterval(interval);
-  }, [centerLat, centerLng, radiusKm]);
+  }, [centerLat, centerLng, radiusKm, isLoading]);
 
   const loadAvailableDrivers = async () => {
     if (!centerLat || !centerLng) return;

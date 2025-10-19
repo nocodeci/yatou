@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDeliveryStore } from '@/app/store/delivery-store';
 import { AppColors } from '@/app/constants/colors';
@@ -9,7 +9,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DeliveriesScreen() {
   const router = useRouter();
-  const { deliveries } = useDeliveryStore();
+  const { deliveries, isLoading, loadData } = useDeliveryStore();
+
+  // Charger les données au démarrage
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const renderDelivery = ({ item }: { item: any }) => (
     <DeliveryCard
@@ -30,13 +35,20 @@ export default function DeliveriesScreen() {
         </TouchableOpacity>
       </View>
 
-      {deliveries.length > 0 ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+          <Text style={styles.loadingText}>Chargement des livraisons...</Text>
+        </View>
+      ) : deliveries.length > 0 ? (
         <FlatList
           data={deliveries}
           renderItem={renderDelivery}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshing={isLoading}
+          onRefresh={loadData}
         />
       ) : (
         <View style={styles.emptyState}>
@@ -119,5 +131,16 @@ const styles = StyleSheet.create({
     color: AppColors.white,
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: AppColors.textSecondary,
   },
 });

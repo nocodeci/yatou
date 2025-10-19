@@ -4,10 +4,19 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { User, Driver, RegisterCredentials, LoginCredentials, AuthResponse } from '@/app/types/auth';
+import {
+  User,
+  Driver,
+  RegisterCredentials,
+  LoginCredentials,
+  AuthResponse,
+} from '@/app/types/auth';
 import { SUPABASE_CONFIG } from '@/app/config/supabase';
 
-export const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+export const supabase = createClient(
+  SUPABASE_CONFIG.url,
+  SUPABASE_CONFIG.anonKey,
+);
 
 // Types pour la base de données
 interface DatabaseUser {
@@ -56,7 +65,13 @@ interface DatabaseDelivery {
   weight?: number;
   dimensions?: any;
   special_instructions?: string;
-  status: 'pending' | 'confirmed' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'picked_up'
+    | 'in_transit'
+    | 'delivered'
+    | 'cancelled';
   estimated_price: number;
   final_price?: number;
   estimated_duration?: number;
@@ -96,21 +111,26 @@ export const authService = {
         .single();
 
       if (userError) {
-        console.error('Erreur lors de la création de l\'utilisateur:', userError);
+        console.error(
+          "Erreur lors de la création de l'utilisateur:",
+          userError,
+        );
         // Si c'est une erreur RLS, essayer de récupérer l'utilisateur existant
         if (userError.message.includes('row-level security')) {
           // Attendre un peu et réessayer
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
           const { data: retryData, error: retryError } = await supabase
             .from('users')
             .select('*')
             .eq('id', authData.user?.id)
             .single();
-          
+
           if (retryError) {
-            throw new Error('Impossible de créer l\'utilisateur dans la base de données');
+            throw new Error(
+              "Impossible de créer l'utilisateur dans la base de données",
+            );
           }
-          
+
           userData = retryData;
         } else {
           throw userError;
@@ -120,23 +140,35 @@ export const authService = {
       }
 
       // Si c'est un livreur, créer l'entrée dans la table drivers
-      if (credentials.role === 'driver' && credentials.vehicleType && credentials.licenseNumber && credentials.vehiclePlate) {
-        const { error: driverError } = await supabase
-          .from('drivers')
-          .insert({
-            user_id: userData.id,
-            license_number: credentials.licenseNumber,
-            vehicle_info: {
-              type: credentials.vehicleType,
-              model: credentials.vehicleModel,
-              plate: credentials.vehiclePlate,
-            },
-            is_available: false,
-            rating: 0,
-            total_deliveries: 0,
-          });
+      if (
+        credentials.role === 'driver' &&
+        credentials.vehicleType &&
+        credentials.licenseNumber &&
+        credentials.vehicleRegistration
+      ) {
+        const { error: driverError } = await supabase.from('drivers').insert({
+          user_id: userData.id,
+          license_number: credentials.licenseNumber,
+          vehicle_info: {
+            type: credentials.vehicleType,
+            model: `${credentials.vehicleType.toUpperCase()} YATOU`,
+            color: 'Rouge',
+            plate_number: credentials.vehicleRegistration,
+          },
+          is_available: false,
+          rating: 0,
+          total_deliveries: 0,
+        });
 
-        if (driverError) throw driverError;
+        if (driverError) {
+          console.error(
+            'Erreur lors de la création du profil livreur:',
+            driverError,
+          );
+          throw driverError;
+        }
+
+        console.log('✅ Profil livreur créé avec succès pour:', userData.email);
       }
 
       const user: User = {
@@ -157,7 +189,7 @@ export const authService = {
         refreshToken: authData.session?.refresh_token || '',
       };
     } catch (error) {
-      console.error('Erreur lors de l\'inscription:', error);
+      console.error("Erreur lors de l'inscription:", error);
       throw error;
     }
   },
@@ -221,8 +253,10 @@ export const authService = {
   // Récupérer l'utilisateur actuel
   async getCurrentUser(): Promise<User | null> {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+
       if (!authUser) return null;
 
       const { data: userData, error } = await supabase
@@ -248,7 +282,7 @@ export const authService = {
         updatedAt: userData.updated_at,
       };
     } catch (error) {
-      console.error('Erreur lors de la récupération de l\'utilisateur:', error);
+      console.error("Erreur lors de la récupération de l'utilisateur:", error);
       return null;
     }
   },
@@ -288,20 +322,32 @@ export const driverService = {
         vehicleInfo: {
           type: driverData.vehicle_info.type,
           model: driverData.vehicle_info.model || '',
-          plate: driverData.vehicle_info.plate || driverData.vehicle_info.registration || '',
+          plate:
+            driverData.vehicle_info.plate ||
+            driverData.vehicle_info.registration ||
+            '',
         },
         isAvailable: driverData.is_available,
-        currentLocation: driverData.current_location ? {
-          latitude: driverData.current_location.lat || driverData.current_location.latitude,
-          longitude: driverData.current_location.lng || driverData.current_location.longitude,
-        } : undefined,
+        currentLocation: driverData.current_location
+          ? {
+              latitude:
+                driverData.current_location.lat ||
+                driverData.current_location.latitude,
+              longitude:
+                driverData.current_location.lng ||
+                driverData.current_location.longitude,
+            }
+          : undefined,
         rating: driverData.rating,
         totalDeliveries: driverData.total_deliveries,
         createdAt: driverData.created_at,
         updatedAt: driverData.updated_at,
       };
     } catch (error) {
-      console.error('Erreur lors de la récupération des informations du livreur:', error);
+      console.error(
+        'Erreur lors de la récupération des informations du livreur:',
+        error,
+      );
       return null;
     }
   },
@@ -322,27 +368,40 @@ export const driverService = {
   },
 
   // Mettre à jour la disponibilité du livreur (alias pour updateOnlineStatus)
-  async updateDriverAvailability(driverId: string, isAvailable: boolean): Promise<void> {
+  async updateDriverAvailability(
+    driverId: string,
+    isAvailable: boolean,
+  ): Promise<void> {
     try {
       const { error } = await supabase
         .from('drivers')
-        .update({ is_available: isAvailable, updated_at: new Date().toISOString() })
+        .update({
+          is_available: isAvailable,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', driverId);
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur lors de la mise à jour de la disponibilité:', error);
+      console.error(
+        'Erreur lors de la mise à jour de la disponibilité:',
+        error,
+      );
       throw error;
     }
   },
 
   // Mettre à jour la position
-  async updateLocation(userId: string, latitude: number, longitude: number): Promise<void> {
+  async updateLocation(
+    userId: string,
+    latitude: number,
+    longitude: number,
+  ): Promise<void> {
     try {
       const { error } = await supabase
         .from('drivers')
-        .update({ 
-          current_location: { lat: latitude, lng: longitude }
+        .update({
+          current_location: { lat: latitude, lng: longitude },
         })
         .eq('user_id', userId);
 
@@ -354,70 +413,92 @@ export const driverService = {
   },
 
   // Mettre à jour la position d'un livreur par son ID
-  async updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void> {
+  async updateDriverLocation(
+    driverId: string,
+    latitude: number,
+    longitude: number,
+  ): Promise<void> {
     try {
       const { error } = await supabase
         .from('drivers')
-        .update({ 
+        .update({
           current_location: `(${longitude}, ${latitude})`,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', driverId);
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur lors de la mise à jour de la position du livreur:', error);
+      console.error(
+        'Erreur lors de la mise à jour de la position du livreur:',
+        error,
+      );
       throw error;
     }
   },
 
   // Récupérer tous les livreurs disponibles dans une zone
-  async getAvailableDriversInArea(centerLat: number, centerLng: number, radiusKm: number = 10): Promise<any[]> {
+  async getAvailableDriversInArea(
+    centerLat: number,
+    centerLng: number,
+    radiusKm: number = 10,
+  ): Promise<any[]> {
     try {
       const { data, error } = await supabase
         .from('drivers')
-        .select(`
+        .select(
+          `
           *,
           users!inner(id, name, email, phone)
-        `)
+        `,
+        )
         .eq('is_available', true)
         .not('current_location', 'is', null);
 
       if (error) throw error;
 
       // Filtrer par distance (approximation simple)
-      const filteredDrivers = data?.filter(driver => {
-        if (!driver.current_location) return false;
-        
-        let driverLat, driverLng;
-        
-        // Gérer différents formats de coordonnées
-        if (typeof driver.current_location === 'string') {
-          // Format: "(-5.0189,7.6995)"
-          const match = driver.current_location.match(/\(([^,]+),([^)]+)\)/);
-          if (match) {
-            driverLng = parseFloat(match[1]);
-            driverLat = parseFloat(match[2]);
+      const filteredDrivers =
+        data?.filter((driver) => {
+          if (!driver.current_location) return false;
+
+          let driverLat, driverLng;
+
+          // Gérer différents formats de coordonnées
+          if (typeof driver.current_location === 'string') {
+            // Format: "(-5.0189,7.6995)"
+            const match = driver.current_location.match(/\(([^,]+),([^)]+)\)/);
+            if (match) {
+              driverLng = parseFloat(match[1]);
+              driverLat = parseFloat(match[2]);
+            }
+          } else if (
+            driver.current_location.lat &&
+            driver.current_location.lng
+          ) {
+            driverLat = driver.current_location.lat;
+            driverLng = driver.current_location.lng;
+          } else if (
+            driver.current_location.latitude &&
+            driver.current_location.longitude
+          ) {
+            driverLat = driver.current_location.latitude;
+            driverLng = driver.current_location.longitude;
           }
-        } else if (driver.current_location.lat && driver.current_location.lng) {
-          driverLat = driver.current_location.lat;
-          driverLng = driver.current_location.lng;
-        } else if (driver.current_location.latitude && driver.current_location.longitude) {
-          driverLat = driver.current_location.latitude;
-          driverLng = driver.current_location.longitude;
-        }
-        
-        if (!driverLat || !driverLng) return false;
 
-        // Calcul de distance simple (approximation)
-        const distance = Math.sqrt(
-          Math.pow(driverLat - centerLat, 2) + Math.pow(driverLng - centerLng, 2)
-        ) * 111; // Approximation: 1 degré ≈ 111 km
+          if (!driverLat || !driverLng) return false;
 
-        return distance <= radiusKm;
-      }) || [];
+          // Calcul de distance simple (approximation)
+          const distance =
+            Math.sqrt(
+              Math.pow(driverLat - centerLat, 2) +
+                Math.pow(driverLng - centerLng, 2),
+            ) * 111; // Approximation: 1 degré ≈ 111 km
 
-      return filteredDrivers.map(driver => ({
+          return distance <= radiusKm;
+        }) || [];
+
+      return filteredDrivers.map((driver) => ({
         id: driver.id,
         userId: driver.user_id,
         name: driver.users.name,
@@ -430,7 +511,7 @@ export const driverService = {
         totalDeliveries: driver.total_deliveries,
         location: (() => {
           let lat, lng;
-          
+
           // Gérer différents formats de coordonnées
           if (typeof driver.current_location === 'string') {
             // Format: "(-5.0189,7.6995)"
@@ -439,14 +520,20 @@ export const driverService = {
               lng = parseFloat(match[1]);
               lat = parseFloat(match[2]);
             }
-          } else if (driver.current_location.lat && driver.current_location.lng) {
+          } else if (
+            driver.current_location.lat &&
+            driver.current_location.lng
+          ) {
             lat = driver.current_location.lat;
             lng = driver.current_location.lng;
-          } else if (driver.current_location.latitude && driver.current_location.longitude) {
+          } else if (
+            driver.current_location.latitude &&
+            driver.current_location.longitude
+          ) {
             lat = driver.current_location.latitude;
             lng = driver.current_location.longitude;
           }
-          
+
           return {
             latitude: lat || 0,
             longitude: lng || 0,
@@ -455,7 +542,10 @@ export const driverService = {
         isAvailable: driver.is_available,
       }));
     } catch (error) {
-      console.error('Erreur lors de la récupération des livreurs disponibles:', error);
+      console.error(
+        'Erreur lors de la récupération des livreurs disponibles:',
+        error,
+      );
       throw error;
     }
   },
@@ -482,13 +572,11 @@ export const deliveryService = {
         .insert({
           user_id: deliveryData.userId,
           pickup_address: deliveryData.pickupAddress,
-          pickup_coordinates: deliveryData.pickupCoordinates ? 
-            { lat: deliveryData.pickupCoordinates.lat, lng: deliveryData.pickupCoordinates.lng } : null,
+          pickup_coordinates: deliveryData.pickupCoordinates
+            ? `(${deliveryData.pickupCoordinates.lng},${deliveryData.pickupCoordinates.lat})`
+            : null,
           delivery_address: deliveryData.deliveryAddress,
-          delivery_coordinates: { 
-            lat: deliveryData.deliveryCoordinates.lat, 
-            lng: deliveryData.deliveryCoordinates.lng 
-          },
+          delivery_coordinates: `(${deliveryData.deliveryCoordinates.lng},${deliveryData.deliveryCoordinates.lat})`,
           description: deliveryData.description,
           weight: deliveryData.weight,
           special_instructions: deliveryData.specialInstructions,
@@ -529,15 +617,15 @@ export const deliveryService = {
     try {
       const { error } = await supabase
         .from('deliveries')
-        .update({ 
+        .update({
           driver_id: driverId,
-          status: 'confirmed'
+          status: 'confirmed',
         })
         .eq('id', deliveryId);
 
       if (error) throw error;
     } catch (error) {
-      console.error('Erreur lors de l\'acceptation de la livraison:', error);
+      console.error("Erreur lors de l'acceptation de la livraison:", error);
       throw error;
     }
   },
@@ -558,10 +646,13 @@ export const deliveryService = {
   },
 
   // Mettre à jour le statut d'une livraison
-  async updateDeliveryStatus(deliveryId: string, status: string): Promise<void> {
+  async updateDeliveryStatus(
+    deliveryId: string,
+    status: string,
+  ): Promise<void> {
     try {
       const updateData: any = { status };
-      
+
       if (status === 'picked_up') {
         updateData.pickup_time = new Date().toISOString();
       } else if (status === 'delivered') {
@@ -593,7 +684,35 @@ export const deliveryService = {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Erreur lors de la récupération des livraisons du livreur:', error);
+      console.error(
+        'Erreur lors de la récupération des livraisons du livreur:',
+        error,
+      );
+      throw error;
+    }
+  },
+
+  // Récupérer les livraisons d'un utilisateur (client)
+  async getUserDeliveries(): Promise<DatabaseDelivery[]> {
+    try {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Utilisateur non authentifié');
+
+      const { data, error } = await supabase
+        .from('deliveries')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error(
+        "Erreur lors de la récupération des livraisons de l'utilisateur:",
+        error,
+      );
       throw error;
     }
   },
@@ -610,15 +729,13 @@ export const notificationService = {
     message: string;
   }): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: notificationData.userId,
-          delivery_id: notificationData.deliveryId,
-          type: notificationData.type,
-          title: notificationData.title,
-          message: notificationData.message,
-        });
+      const { error } = await supabase.from('notifications').insert({
+        user_id: notificationData.userId,
+        delivery_id: notificationData.deliveryId,
+        type: notificationData.type,
+        title: notificationData.title,
+        message: notificationData.message,
+      });
 
       if (error) throw error;
     } catch (error) {
