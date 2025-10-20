@@ -19,7 +19,7 @@ export const supabase = createClient(
 );
 
 // Types pour la base de données
-interface DatabaseUser {
+export interface DatabaseUser {
   id: string;
   email: string;
   password: string;
@@ -35,7 +35,7 @@ interface DatabaseUser {
   updated_at: string;
 }
 
-interface DatabaseDriver {
+export interface DatabaseDriver {
   id: string;
   user_id: string;
   license_number: string;
@@ -774,5 +774,90 @@ export const notificationService = {
       console.error('Erreur lors du marquage de la notification:', error);
       throw error;
     }
+  },
+};
+
+// Services utilisateur
+export const userService = {
+  async getCurrentUserProfile(): Promise<{
+    user: DatabaseUser & {
+      notification_preferences?: Record<string, unknown>;
+      language?: string;
+    };
+    driver: (DatabaseDriver & { user?: DatabaseUser }) | null;
+  }> {
+    const {
+      data: { user: authUser },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !authUser) {
+      throw authError || new Error('Utilisateur non authentifié');
+    }
+
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', authUser.id)
+      .single();
+
+    if (userError || !userRow) {
+      throw userError || new Error('Utilisateur non trouvé');
+    }
+
+    let driverRow: (DatabaseDriver & { user?: DatabaseUser }) | null = null;
+
+    if (userRow.role === 'driver') {
+      const { data: driverData, error: driverError } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('user_id', userRow.id)
+        .single();
+
+      if (driverError && driverError.code !== 'PGRST116') {
+        console.warn(
+          '⚠️ Impossible de récupérer le profil livreur:',
+          driverError,
+        );
+      } else {
+        driverRow = driverData ?? null;
+      }
+    }
+
+    return {
+      user: userRow,
+      driver: driverRow,
+    };
+  },
+
+  async updateUserProfile(
+    updates: Partial<Pick<DatabaseUser, 'name' | 'phone'>> & {
+      notification_preferences?: Record<string, unknown>;
+      language?: string;
+      default_pickup_address?: string | null;
+      default_pickup_coordinates?: { lat: number; lng: number } | null;
+    },
+  ): Promise<DatabaseUser> {
+    const {
+      data: { user: authUser },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !authUser) {
+      throw authError || new Error('Utilisateur non authentifié');
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', authUser.id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      throw error || new Error('Erreur lors de la mise à jour du profil');
+    }
+
+    return data;
   },
 };
