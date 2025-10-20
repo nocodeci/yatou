@@ -26,11 +26,11 @@ interface DriverMarkersProps {
   onDriverPress?: (driver: Driver) => void;
 }
 
-export default function DriverMarkers({ 
-  centerLat, 
-  centerLng, 
-  radiusKm = 10, 
-  onDriverPress 
+export default function DriverMarkers({
+  centerLat,
+  centerLng,
+  radiusKm = 10,
+  onDriverPress,
 }: DriverMarkersProps) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +42,8 @@ export default function DriverMarkers({
   // Rafraîchir automatiquement les positions toutes les 30 secondes (réduit la fréquence)
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!isLoading) { // Éviter les appels simultanés
+      if (!isLoading) {
+        // Éviter les appels simultanés
         loadAvailableDrivers();
       }
     }, 30000); // Rafraîchir toutes les 30 secondes au lieu de 10
@@ -56,9 +57,9 @@ export default function DriverMarkers({
     setIsLoading(true);
     try {
       const availableDrivers = await driverService.getAvailableDriversInArea(
-        centerLat, 
-        centerLng, 
-        radiusKm
+        centerLat,
+        centerLng,
+        radiusKm,
       );
       setDrivers(availableDrivers);
     } catch (error) {
@@ -100,16 +101,7 @@ export default function DriverMarkers({
   }
 
   if (drivers.length === 0) {
-    return (
-      <View style={styles.noDriversContainer}>
-        <Text style={styles.noDriversText}>
-          Aucun livreur visible
-        </Text>
-        <Text style={styles.noDriversSubtext}>
-          Les livreurs doivent activer leur GPS pour apparaître sur la carte
-        </Text>
-      </View>
-    );
+    return null;
   }
 
   return (
@@ -120,13 +112,23 @@ export default function DriverMarkers({
           coordinate={driver.location}
           onPress={() => onDriverPress?.(driver)}
         >
-          <View style={[styles.markerContainer, { borderColor: getVehicleColor(driver.vehicleType) }]}>
-            <Image 
-              source={getVehicleIcon(driver.vehicleType)} 
+          <View
+            style={[
+              styles.markerContainer,
+              { borderColor: getVehicleColor(driver.vehicleType) },
+            ]}
+          >
+            <Image
+              source={getVehicleIcon(driver.vehicleType)}
               style={styles.vehicleIcon}
               resizeMode="contain"
             />
-            <View style={[styles.statusDot, { backgroundColor: driver.isAvailable ? '#10B981' : '#EF4444' }]} />
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: driver.isAvailable ? '#10B981' : '#EF4444' },
+              ]}
+            />
           </View>
         </Marker>
       ))}
@@ -165,32 +167,5 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 2,
     borderColor: '#FFFFFF',
-  },
-  noDriversContainer: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  noDriversText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  noDriversSubtext: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 16,
   },
 });
