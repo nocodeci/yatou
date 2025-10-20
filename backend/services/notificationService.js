@@ -8,6 +8,7 @@ const { supabase } = require('../config/supabase');
 class NotificationService {
   constructor() {
     this.fcm = fcmService;
+    this.lastExpoPushResult = null;
   }
 
   /**
@@ -206,17 +207,145 @@ class NotificationService {
    * Envoyer des notifications Expo Push (fallback)
    */
   async sendExpoPushNotifications(tokens, title, body, data = {}) {
-    // Note: Implémentation simplifiée - à améliorer avec expo-server-sdk si nécessaire
-    console.log('📱 Envoi Expo Push (fallback) - tokens:', tokens.length);
+    if (!tokens || tokens.length === 0) {
+      console.warn('⚠️ Aucun token Expo Push fourni');
+      this.lastExpoPushResult = {
+        success: false,
+        successCount: 0,
+        failureCount: 0,
+        invalidTokens: 0,
+        error: 'NO_TOKENS',
+      };
+      return {
+        success: false,
+        successCount: 0,
+        failureCount: 0,
+        error: 'NO_TOKENS',
+      };
+    }
 
-    // Pour l'instant, simulation du succès
-    // À remplacer par l'implémentation réelle avec expo-server-sdk
-    return {
-      success: true,
-      successCount: tokens.length,
-      failureCount: 0,
-      method: 'expo-push-fallback',
+    const normalizedTokens = tokens
+      .map((token) => (typeof token === 'string' ? token.trim() : ''))
+      .filter((token) => token.startsWith('ExponentPushToken'));
+
+    if (normalizedTokens.length === 0) {
+      console.warn('⚠️ Aucun token Expo Push valide détecté', tokens);
+      this.lastExpoPushResult = {
+        success: false,
+        successCount: 0,
+        failureCount: 0,
+        invalidTokens: 0,
+        error: 'INVALID_TOKENS',
+      };
+      return {
+        success: false,
+        successCount: 0,
+        failureCount: 0,
+        error: 'INVALID_TOKENS',
+      };
+    }
+
+    console.log('📱 Envoi Expo Push - tokens:', normalizedTokens.length);
+
+    const chunkSize = 100; // Limite Expo
+    let successCount = 0;
+    let failureCount = 0;
+    const invalidTokens = [];
+    const responses = [];
+
+    // Préparer les messages
+    const messages = normalizedTokens.map((token) => ({
+      to: token,
+      sound: 'default',
+      title,
+      body,
+      data: {
+        ...data,
+        provider: 'expo',
+        timestamp: Date.now().toString(),
+      },
+      priority: 'high',
+      channelId: data?.type === 'new_order' ? 'urgent_orders' : 'default',
+    }));
+
+    for (let i = 0; i < messages.length; i += chunkSize) {
+      const chunk = messages.slice(i, i + chunkSize);
+
+      try {
+        const response = await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(chunk),
+        });
+
+        if (!response.ok) {
+          console.error(
+            '❌ Erreur HTTP Expo Push:',
+            response.status,
+            response.statusText,
+          );
+          failureCount += chunk.length;
+          responses.push({
+            status: response.status,
+            statusText: response.statusText,
+          });
+          continue;
+        }
+
+        const result = await response.json();
+        responses.push(result);
+
+        if (Array.isArray(result?.data)) {
+          result.data.forEach((ticket, idx) => {
+            const targetToken = chunk[idx]?.to;
+            if (ticket.status === 'ok') {
+              successCount += 1;
+            } else {
+              failureCount += 1;
+              console.error('❌ Erreur Expo Push:', {
+                token: targetToken,
+                message: ticket.message,
+                details: ticket.details,
+              });
+
+              if (
+                ticket.details?.error === 'DeviceNotRegistered' ||
+                ticket.details?.error === 'InvalidCredentials'
+              ) {
+                invalidTokens.push(targetToken);
+              }
+            }
+          });
+        } else {
+          console.warn('⚠️ Réponse inattendue Expo Push:', result);
+          failureCount += chunk.length;
+        }
+      } catch (error) {
+        console.error('❌ Exception envoi Expo Push:', error);
+        failureCount += chunk.length;
+      }
+    }
+
+    if (invalidTokens.length > 0) {
+      await this.removeInvalidExpoTokens(invalidTokens);
+    }
+
+    const summary = {
+      success: successCount > 0,
+      successCount,
+      failureCount,
+      invalidTokens: invalidTokens.length,
+      responses,
     };
+
+    this.lastExpoPushResult = summary;
+
+    console.log('📊 Résumé Expo Push:', summary);
+    return summary;
   }
 
   /**
@@ -350,9 +479,47 @@ class NotificationService {
       fcm: this.fcm.getServiceInfo(),
       expoPush: {
         enabled: true,
-        status: 'fallback',
+        status: 'active',
+        lastResult: this.lastExpoPushResult || null,
       },
     };
+  }
+
+  /**
+   * Nettoyer les tokens Expo invalides
+   */
+  async removeInvalidExpoTokens(tokens) {
+    try {
+      const uniqueTokens = Array.from(new Set(tokens.filter(Boolean)));
+      if (uniqueTokens.length === 0) {
+        return;
+      }
+
+      console.log('🧹 Nettoyage tokens Expo invalides:', uniqueTokens.length);
+
+      const { error: userError } = await supabase
+        .from('users')
+        .update({ expo_push_token: null })
+        .in('expo_push_token', uniqueTokens);
+
+      if (userError) {
+        console.warn('⚠️ Impossible de nettoyer tokens côté users:', userError);
+      }
+
+      const { error: driverError } = await supabase
+        .from('drivers')
+        .update({ expo_push_token: null })
+        .in('expo_push_token', uniqueTokens);
+
+      if (driverError) {
+        console.warn(
+          '⚠️ Impossible de nettoyer tokens côté drivers:',
+          driverError,
+        );
+      }
+    } catch (error) {
+      console.error('❌ Erreur nettoyage tokens Expo invalides:', error);
+    }
   }
 }
 
