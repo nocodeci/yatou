@@ -75,6 +75,7 @@ export default function DriverHomeScreen() {
     totalDeliveries: 0,
   });
   const [showNotificationTester, setShowNotificationTester] = useState(false);
+  const [isTestingNotification, setIsTestingNotification] = useState(false);
 
   // Charger les données du livreur
   useEffect(() => {
@@ -490,6 +491,27 @@ export default function DriverHomeScreen() {
     ]);
   };
 
+  const handleTestNotification = async () => {
+    try {
+      setIsTestingNotification(true);
+      const result = await notificationService.testNotifications('driver');
+      const successMessage =
+        typeof result?.successCount === 'number'
+          ? `Notification test envoyée (${result.successCount} succès / ${result.failureCount || 0} échecs).`
+          : 'Une notification de test a été envoyée.';
+      Alert.alert('Notification test envoyée', successMessage);
+    } catch (error) {
+      console.error('Erreur lors du test de notification:', error);
+      Alert.alert(
+        'Erreur',
+        (error as Error)?.message ||
+          "Impossible d'envoyer la notification de test. Vérifiez votre connexion internet.",
+      );
+    } finally {
+      setIsTestingNotification(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -630,6 +652,22 @@ export default function DriverHomeScreen() {
             >
               <MapPin size={32} color="#FFFFFF" />
               <Text style={styles.actionText}>Carte</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.actionCard,
+                styles.testActionCard,
+                isTestingNotification && styles.actionCardDisabled,
+              ]}
+              onPress={handleTestNotification}
+              disabled={isTestingNotification}
+            >
+              {isTestingNotification ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Bell size={32} color="#FFFFFF" />
+              )}
+              <Text style={styles.actionText}>Tester notification</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -812,6 +850,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 100,
+  },
+  testActionCard: {
+    backgroundColor: '#1F2937',
+  },
+  actionCardDisabled: {
+    opacity: 0.6,
   },
   actionText: {
     fontSize: 14,

@@ -104,7 +104,7 @@ class DriverRequestService {
         }
       } else {
         console.log(
-          `⚠️ Pas de token Expo pour ${driverProfile.userId} - notification non envoyée`,
+          `⚠️ Pas d'identifiant OneSignal pour ${driverProfile.userId} - notification non envoyée`,
         );
       }
 
@@ -424,27 +424,25 @@ class DriverRequestService {
   }
 
   /**
-   * Obtenir le token Expo Push d'un livreur
+   * Obtenir l'identifiant OneSignal enregistré pour un livreur
    */
   private async getDriverExpoToken(driverId: string): Promise<string | null> {
     try {
       // En production, récupérer le token depuis la base de données
       const { data: driverData, error } = await supabase
         .from('drivers')
-        .select('expo_push_token')
+        .select('onesignal_player_id')
         .eq('id', driverId)
         .single();
 
-      if (error || !driverData?.expo_push_token) {
-        // Ne pas logger à chaque fois pour éviter le spam
-        // console.log(`Token Expo Push non trouvé pour le livreur ${driverId}`);
+      if (error || !driverData?.onesignal_player_id) {
         return null;
       }
 
-      return driverData.expo_push_token;
+      return driverData.onesignal_player_id;
     } catch (error) {
       console.error(
-        'Erreur lors de la récupération du token Expo Push:',
+        'Erreur lors de la récupération du player OneSignal:',
         error,
       );
       return null;

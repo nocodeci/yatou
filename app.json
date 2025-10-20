@@ -71,12 +71,12 @@
         }
       ],
       [
-        "expo-notifications",
+        "onesignal-expo-plugin",
         {
-          "icon": "./assets/images/icon.png",
-          "color": "#DC2626",
-          "defaultChannel": "default",
-          "sounds": ["./assets/notification.wav"]
+          "mode": "development",
+          "appId": "${ONE_SIGNAL_APP_ID}",
+          "androidAppId": "${ONE_SIGNAL_APP_ID}",
+          "iOSAppId": "${ONE_SIGNAL_APP_ID}"
         }
       ]
     ],
@@ -87,7 +87,10 @@
       "router": {},
       "eas": {
         "projectId": "c154c066-2561-48be-bd88-bb131406475f"
-      }
+      },
+      "allowEmulatorNotifications": true,
+      "oneSignalAppId": "${ONE_SIGNAL_APP_ID}",
+      "oneSignalRestApiKey": "${ONE_SIGNAL_REST_API_KEY}"
     },
     "owner": "yohan0707"
   }

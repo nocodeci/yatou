@@ -16,55 +16,47 @@ const notificationLimit = rateLimit({
 });
 
 /**
- * POST /api/notifications/register-token
- * Enregistrer un token FCM pour un utilisateur
+ * POST /api/notifications/register-player
+ * Enregistrer un identifiant OneSignal pour un utilisateur
  */
-router.post('/register-token', authenticateToken, async (req, res) => {
+router.post('/register-player', authenticateToken, async (req, res) => {
   try {
-    const { fcmToken, userType = 'client' } = req.body;
+    const { playerId, userType = 'client' } = req.body;
     const userId = req.user.id;
 
-    if (!fcmToken) {
+    if (!playerId || typeof playerId !== 'string') {
       return res.status(400).json({
         success: false,
-        message: 'Token FCM requis',
+        message: 'playerId requis',
       });
     }
 
-    // Valider le format du token FCM (s'assurer que c'est une chaîne non vide)
-    if (typeof fcmToken !== 'string' || fcmToken.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Format de token invalide',
-      });
-    }
+    const normalizedPlayerId = playerId.trim();
 
-    const normalizedToken = fcmToken.trim();
-
-    const result = await notificationService.saveUserFCMToken(
+    const result = await notificationService.saveUserPlayerId(
       userId,
-      normalizedToken,
+      normalizedPlayerId,
       userType,
     );
 
     if (!result.success) {
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la sauvegarde du token',
+        message: "Erreur lors de l'enregistrement du playerId",
       });
     }
 
     res.json({
       success: true,
-      message: 'Token FCM enregistré avec succès',
+      message: 'Player OneSignal enregistré avec succès',
       data: {
         userId,
         userType,
-        tokenRegistered: true,
+        playerRegistered: true,
       },
     });
   } catch (error) {
-    console.error('Erreur enregistrement token FCM:', error);
+    console.error('Erreur enregistrement player OneSignal:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur',
@@ -95,22 +87,12 @@ router.post(
       const result =
         await notificationService.sendOrderNotificationToDrivers(orderData);
 
-      if (!result.success) {
-        return res.status(500).json({
-          success: false,
-          message: "Erreur lors de l'envoi des notifications",
-          error: result.error,
-        });
-      }
-
       res.json({
-        success: true,
-        message: 'Notifications envoyées aux livreurs',
-        data: {
-          driversNotified: result.driversNotified,
-          successfulNotifications: result.successfulNotifications,
-          results: result.results,
-        },
+        success: result.success,
+        message: result.success
+          ? 'Notifications envoyées aux livreurs'
+          : "Erreur lors de l'envoi des notifications",
+        data: result,
       });
     } catch (error) {
       console.error('Erreur envoi notification commande:', error);
@@ -148,17 +130,11 @@ router.post(
         newStatus,
       );
 
-      if (!result.success) {
-        return res.status(500).json({
-          success: false,
-          message: "Erreur lors de l'envoi de la notification",
-          error: result.error,
-        });
-      }
-
       res.json({
-        success: true,
-        message: 'Notification de statut envoyée',
+        success: result.success,
+        message: result.success
+          ? 'Notification de statut envoyée'
+          : "Erreur lors de l'envoi de la notification",
         data: result,
       });
     } catch (error) {
@@ -170,6 +146,78 @@ router.post(
     }
   },
 );
+
+/**
+ * POST /api/notifications/send-driver
+ * Envoyer une notification ciblée à un livreur connecté
+ */
+router.post('/send-driver', authenticateToken, async (req, res) => {
+  try {
+    const { notificationData } = req.body;
+
+    if (!notificationData) {
+      return res.status(400).json({
+        success: false,
+        message: 'notificationData requis',
+      });
+    }
+
+    const result =
+      await notificationService.sendNotificationToSpecificDriver(
+        notificationData,
+      );
+
+    res.json({
+      success: result.success,
+      message: result.success
+        ? 'Notification envoyée au livreur'
+        : "Erreur lors de l'envoi de la notification",
+      data: result,
+    });
+  } catch (error) {
+    console.error('Erreur envoi notification driver:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur',
+    });
+  }
+});
+
+/**
+ * POST /api/notifications/send-client
+ * Envoyer une notification ciblée à un client
+ */
+router.post('/send-client', authenticateToken, async (req, res) => {
+  try {
+    const { clientId, notificationData } = req.body;
+
+    if (!clientId || !notificationData) {
+      return res.status(400).json({
+        success: false,
+        message: 'clientId et notificationData sont requis',
+      });
+    }
+
+    const result = await notificationService.sendNotificationToClientById(
+      clientId,
+      notificationData,
+    );
+
+    res.json({
+      success: result.success,
+      message: result.success
+        ? 'Notification envoyée au client'
+        : "Erreur lors de l'envoi de la notification",
+      data: result,
+    });
+  } catch (error) {
+    console.error('Erreur envoi notification client:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur',
+    });
+  }
+});
 
 /**
  * POST /api/notifications/test
@@ -235,7 +283,7 @@ router.delete('/token', authenticateToken, async (req, res) => {
     const { userType = 'client' } = req.body;
     const userId = req.user.id;
 
-    const result = await notificationService.saveUserFCMToken(
+    const result = await notificationService.saveUserPlayerId(
       userId,
       null,
       userType,
