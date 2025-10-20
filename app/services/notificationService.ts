@@ -623,7 +623,7 @@ class NotificationService {
         console.warn(
           '⚠️ Aucune URL backend configurée - enregistrement token ignoré',
         );
-        return false;
+        return await this.registerTokenWithSupabase(normalizedToken, userType);
       }
 
       console.log(`📡 Enregistrement token ${userType} avec le backend...`);
@@ -634,7 +634,7 @@ class NotificationService {
         console.warn(
           "⚠️ Pas de token d'authentification - enregistrement différé",
         );
-        return false;
+        return await this.registerTokenWithSupabase(normalizedToken, userType);
       }
 
       const response = await fetch(
@@ -659,10 +659,97 @@ class NotificationService {
       } else {
         const error = await response.json();
         console.error('❌ Erreur enregistrement backend:', error);
-        return false;
+        // Fallback si l'utilisateur n'est pas reconnu côté backend
+        const fallbackResult = await this.registerTokenWithSupabase(
+          normalizedToken,
+          userType,
+        );
+        if (fallbackResult) {
+          console.log('✅ Token enregistré via Supabase (fallback)');
+        }
+        return fallbackResult;
       }
     } catch (error) {
       console.error('❌ Erreur communication backend:', error);
+      return await this.registerTokenWithSupabase(token, userType);
+    }
+  }
+
+  /**
+   * Sauvegarder le token directement dans Supabase (fallback)
+   */
+  private async registerTokenWithSupabase(
+    token: string,
+    userType: string,
+  ): Promise<boolean> {
+    try {
+      const normalizedToken = typeof token === 'string' ? token.trim() : token;
+      const { supabase } = await import('./api');
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        console.warn(
+          '⚠️ Impossible de récupérer le user Supabase pour sauvegarder le token',
+          authError,
+        );
+        return false;
+      }
+
+      const updates = normalizedToken.startsWith('ExponentPushToken')
+        ? { expo_push_token: normalizedToken }
+        : { fcm_token: normalizedToken };
+
+      const { error: userUpdateError } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (userUpdateError) {
+        console.error(
+          '❌ Erreur mise à jour token côté users:',
+          userUpdateError,
+        );
+        return false;
+      }
+
+      if (userType === 'driver') {
+        const { data: driverRow, error: driverLookupError } = await supabase
+          .from('drivers')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (driverLookupError) {
+          console.warn(
+            '⚠️ Impossible de récupérer le profil livreur pour sauvegarder le token:',
+            driverLookupError,
+          );
+        } else if (driverRow) {
+          const { error: driverUpdateError } = await supabase
+            .from('drivers')
+            .update(updates)
+            .eq('id', driverRow.id);
+
+          if (driverUpdateError) {
+            console.warn(
+              '⚠️ Token sauvegardé côté users mais pas côté drivers:',
+              driverUpdateError,
+            );
+          }
+        }
+      }
+
+      console.log('✅ Token enregistré via Supabase (direct)');
+      return true;
+    } catch (fallbackError) {
+      console.error(
+        '❌ Erreur lors du fallback de sauvegarde Supabase:',
+        fallbackError,
+      );
       return false;
     }
   }

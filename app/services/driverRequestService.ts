@@ -280,38 +280,49 @@ class DriverRequestService {
     driverId: string,
   ): Promise<void> {
     try {
-      // Créer une entrée dans la table deliveries
       const { deliveryService } = await import('./api');
 
-      const deliveryData = {
-        userId: orderRequest.clientId,
-        pickupAddress: orderRequest.pickupAddress,
-        pickupCoordinates: {
-          lat: orderRequest.pickupLocation[0],
-          lng: orderRequest.pickupLocation[1],
-        },
-        deliveryAddress: orderRequest.deliveryAddress,
-        deliveryCoordinates: {
-          lat: orderRequest.deliveryLocation[0],
-          lng: orderRequest.deliveryLocation[1],
-        },
-        description: `Livraison ${orderRequest.vehicleType}`,
-        estimatedPrice: orderRequest.estimatedPrice,
-        estimatedDuration: 30, // 30 minutes par défaut
-      };
+      let deliveryId = orderRequest.deliveryId;
+      let newlyCreatedDeliveryId: string | null = null;
 
-      // Créer la livraison en base de données
-      const delivery = await deliveryService.createDelivery(deliveryData);
+      if (!deliveryId) {
+        const deliveryData = {
+          userId: orderRequest.clientId,
+          pickupAddress: orderRequest.pickupAddress,
+          pickupCoordinates: {
+            lat: orderRequest.pickupLocation[0],
+            lng: orderRequest.pickupLocation[1],
+          },
+          deliveryAddress: orderRequest.deliveryAddress,
+          deliveryCoordinates: {
+            lat: orderRequest.deliveryLocation[0],
+            lng: orderRequest.deliveryLocation[1],
+          },
+          description: `Livraison ${orderRequest.vehicleType}`,
+          estimatedPrice: orderRequest.estimatedPrice,
+          estimatedDuration: 30, // 30 minutes par défaut
+        };
 
-      // Accepter la livraison avec le livreur
-      await deliveryService.acceptDelivery(delivery.id, driverId);
+        const delivery = await deliveryService.createDelivery(deliveryData);
+        deliveryId = delivery.id;
+        newlyCreatedDeliveryId = delivery.id;
+        orderRequest.deliveryId = delivery.id;
 
-      console.log(
-        `✅ Commande ${orderRequest.id} créée en base de données avec ID: ${delivery.id}`,
-      );
-      console.log(
-        `📱 Notification envoyée au client: Commande acceptée par ${driverId}`,
-      );
+        console.log(
+          `✅ Commande ${orderRequest.id} créée en base de données avec ID: ${delivery.id}`,
+        );
+      } else {
+        console.log(
+          `🔁 Utilisation de la livraison existante ${deliveryId} pour la commande ${orderRequest.id}`,
+        );
+      }
+
+      if (deliveryId) {
+        await deliveryService.acceptDelivery(deliveryId, driverId);
+        console.log(
+          `📦 Livraison ${deliveryId} confirmée avec le livreur ${driverId}`,
+        );
+      }
 
       // Notifier le client via le store des livraisons
       try {
@@ -338,6 +349,11 @@ class DriverRequestService {
           '📱 Notification push envoyée au client:',
           orderRequest.clientId,
         );
+        if (newlyCreatedDeliveryId) {
+          console.log(
+            `📌 Livraison créée associée au client: ${newlyCreatedDeliveryId}`,
+          );
+        }
       } catch (error) {
         console.error(
           "Erreur lors de l'envoi de la notification au client:",
